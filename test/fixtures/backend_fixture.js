@@ -15,6 +15,10 @@ if (mode === 'crash') {
       response.end();
       return;
     }
+    if (mode === 'stall') {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      return;
+    }
     response.setHeader('content-type', 'application/json');
     response.end(
       JSON.stringify({

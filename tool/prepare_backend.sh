@@ -8,7 +8,7 @@ work_dir=$(mktemp -d)
 cleanup() {
   rm -rf "$work_dir"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup 0 HUP INT TERM
 
 git clone --depth 1 --branch feat/runtime-manifest \
   https://github.com/sub-store-org/Sub-Store.git "$work_dir/sub-store"

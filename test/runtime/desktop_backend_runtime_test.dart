@@ -103,8 +103,40 @@ void main() {
         await runtime.start();
 
         expect(await runtime.isHealthy(), isTrue);
+        expect(
+          await File.fromUri(
+            temp.uri.resolve('bundle/data/runtime/linux-x64/bin/selected'),
+          ).exists(),
+          isTrue,
+        );
       },
     );
+
+    test('restarts a healthy backend', () async {
+      final states = <RuntimeState>[];
+      final subscription = runtime.state.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await runtime.start();
+      await runtime.restart();
+
+      expect(await runtime.isHealthy(), isTrue);
+      expect(
+        states.where((state) => state.status == RuntimeStatus.starting),
+        hasLength(2),
+      );
+    });
+
+    test('times out when an HTTP response never completes', () async {
+      runtime = await _createRuntime(temp, mode: 'stall');
+      final states = <RuntimeState>[];
+      final subscription = runtime.state.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await runtime.start().timeout(const Duration(seconds: 15));
+
+      expect(states.last.status, RuntimeStatus.crashed);
+    });
   });
 }
 
@@ -133,7 +165,7 @@ Future<DesktopBackendRuntime> _createRuntime(
     );
     await node.parent.create(recursive: true);
     await node.writeAsString(
-      '#!/bin/sh\nif [ "\$1" = "--version" ]; then echo v$bundledNodeVersion; exit 0; fi\nexec node "\$@"\n',
+      '#!/bin/sh\nif [ "\$1" = "--version" ]; then echo v$bundledNodeVersion; exit 0; fi\ntouch "${node.parent.path}/selected"\nexec node "\$@"\n',
     );
     await Process.run('chmod', <String>['755', node.path]);
   }

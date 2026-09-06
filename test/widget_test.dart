@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sub_dock/app/app.dart';
@@ -32,6 +33,19 @@ void main() {
 
     expect(runtime.stops, 1);
     expect(find.text('Stopped'), findsOneWidget);
+  });
+
+  testWidgets('dashboard stops the runtime when the app detaches', (
+    WidgetTester tester,
+  ) async {
+    final runtime = _FakeBackendRuntime();
+    addTearDown(runtime.dispose);
+
+    await tester.pumpWidget(SubDockApp(runtime: runtime));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
+    await tester.pump();
+
+    expect(runtime.stops, 1);
   });
 }
 

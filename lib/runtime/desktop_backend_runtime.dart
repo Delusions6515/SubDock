@@ -15,6 +15,7 @@ class DesktopBackendRuntime implements BackendRuntime {
 
   static const _healthCheckInterval = Duration(seconds: 1);
   static const _healthCheckTimeout = Duration(seconds: 10);
+  static const _httpRequestTimeout = Duration(seconds: 1);
   static const _stopTimeout = Duration(seconds: 5);
 
   final RuntimeDirectories directories;
@@ -226,29 +227,12 @@ class DesktopBackendRuntime implements BackendRuntime {
 
   Future<BackendInfo?> _requestInfo() async {
     final client = _httpClient ??= HttpClient()
-      ..connectionTimeout = const Duration(seconds: 1);
+      ..connectionTimeout = _httpRequestTimeout;
     try {
-      final request = await client.getUrl(_apiUrl());
-      final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) return null;
-      final body = await utf8.decoder.bind(response).join();
-      final decoded = jsonDecode(body);
-      if (decoded is! Map<String, dynamic>) return null;
-      final data = decoded['data'];
-      if (data is! Map<String, dynamic>) return null;
-      final meta = data['meta'];
-      if (meta is! Map<String, dynamic>) return null;
-      final node = meta['node'];
-      if (node is! Map<String, dynamic> ||
-          node['version'] is! String ||
-          data['version'] is! String) {
-        return null;
-      }
-      return BackendInfo(
-        nodeVersion: node['version'] as String,
-        backendVersion: data['version'] as String,
-        port: port,
-      );
+      return await _requestInfoFrom(client).timeout(_httpRequestTimeout);
+    } on TimeoutException {
+      _closeHttpClient();
+      return null;
     } on HttpException {
       return null;
     } on SocketException {
@@ -256,6 +240,30 @@ class DesktopBackendRuntime implements BackendRuntime {
     } on FormatException {
       return null;
     }
+  }
+
+  Future<BackendInfo?> _requestInfoFrom(HttpClient client) async {
+    final request = await client.getUrl(_apiUrl());
+    final response = await request.close();
+    if (response.statusCode != HttpStatus.ok) return null;
+    final body = await utf8.decoder.bind(response).join();
+    final decoded = jsonDecode(body);
+    if (decoded is! Map<String, dynamic>) return null;
+    final data = decoded['data'];
+    if (data is! Map<String, dynamic>) return null;
+    final meta = data['meta'];
+    if (meta is! Map<String, dynamic>) return null;
+    final node = meta['node'];
+    if (node is! Map<String, dynamic> ||
+        node['version'] is! String ||
+        data['version'] is! String) {
+      return null;
+    }
+    return BackendInfo(
+      nodeVersion: node['version'] as String,
+      backendVersion: data['version'] as String,
+      port: port,
+    );
   }
 
   void _capture(Stream<List<int>> stream, RuntimeLogSource source) {
