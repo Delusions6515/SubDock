@@ -1,17 +1,24 @@
-# sub_dock
+# SubDock
 
-A new Flutter project.
+Native cross-platform runtime manager for Sub-Store. Phase 1 provides a Linux
+runtime harness and a minimal backend dashboard.
 
-## Getting Started
+## Linux development
 
-This project is a starting point for a Flutter application.
+Prepare a matching Sub-Store bundle and runtime manifest from upstream PR #641:
 
-A few resources to get you started if this is your first Flutter project:
+```sh
+tool/prepare_backend.sh
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Then run the checks and Linux application through FVM:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```sh
+fvm flutter analyze
+fvm flutter test
+fvm flutter run -d linux
+```
+
+The Linux build downloads a checksum-verified Node.js 24.15.0 fallback. At
+runtime, a system `node` is preferred when its major version matches the
+generated `runtime-manifest.json`.
