@@ -74,6 +74,26 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+set(SUBDOCK_PROJECT_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
+set(SUBDOCK_BACKEND_DIR "${SUBDOCK_PROJECT_DIR}/.subdock/backend")
+foreach(backend_file sub-store.bundle.js runtime-manifest.json)
+  if(NOT EXISTS "${SUBDOCK_BACKEND_DIR}/${backend_file}")
+    message(FATAL_ERROR
+      "Missing ${backend_file}. Run tool/prepare_backend.sh before building Linux.")
+  endif()
+endforeach()
+
+set(SUBDOCK_NODE_STAGING_DIR "${CMAKE_BINARY_DIR}/subdock-node")
+execute_process(
+  COMMAND "${CMAKE_COMMAND}"
+    "-DOUTPUT_DIR=${SUBDOCK_NODE_STAGING_DIR}"
+    -P "${SUBDOCK_PROJECT_DIR}/cmake/prepare_linux_node.cmake"
+  RESULT_VARIABLE SUBDOCK_NODE_RESULT
+)
+if(NOT SUBDOCK_NODE_RESULT EQUAL 0)
+  message(FATAL_ERROR "Failed to prepare bundled Node.js runtime.")
+endif()
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
@@ -90,6 +110,16 @@ install(CODE "
 
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+
+install(DIRECTORY "${SUBDOCK_NODE_STAGING_DIR}/node-v24.15.0-linux-x64/"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/runtime/linux-x64"
+  COMPONENT Runtime)
+
+install(FILES
+  "${SUBDOCK_BACKEND_DIR}/sub-store.bundle.js"
+  "${SUBDOCK_BACKEND_DIR}/runtime-manifest.json"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/backend"
+  COMPONENT Runtime)
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
