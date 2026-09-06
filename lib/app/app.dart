@@ -42,8 +42,7 @@ class _SubDockAppState extends State<SubDockApp> {
   void _onState(RuntimeState state) {
     if (!mounted) return;
     setState(() => _state = state);
-    if (state.status == RuntimeStatus.running ||
-        state.status == RuntimeStatus.unhealthy) {
+    if (state.status == RuntimeStatus.running) {
       unawaited(_loadInfo());
     }
   }

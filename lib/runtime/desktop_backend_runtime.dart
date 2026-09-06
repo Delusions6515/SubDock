@@ -28,8 +28,9 @@ class DesktopBackendRuntime implements BackendRuntime {
     changedAt: DateTime.now(),
   );
   Future<void> _operation = Future<void>.value();
-  Future<void> _logWrite = Future<void>.value();
   Process? _process;
+  HttpClient? _httpClient;
+  IOSink? _logSink;
   Timer? _healthTimer;
   bool _stopping = false;
   bool _checkingHealth = false;
@@ -85,6 +86,8 @@ class DesktopBackendRuntime implements BackendRuntime {
       if (!await bundle.exists()) {
         throw StateError('Backend bundle is missing: ${bundle.path}');
       }
+      _logSink = File.fromUri(directories.logs.uri.resolve('backend.log'))
+          .openWrite(mode: FileMode.append);
 
       final process = await Process.start(
         node,
@@ -114,6 +117,7 @@ class DesktopBackendRuntime implements BackendRuntime {
       _emit(RuntimeStatus.running);
       _startHealthMonitor();
     } catch (error) {
+      await _closeLogSink();
       _emit(RuntimeStatus.crashed, '$error');
     }
   }
@@ -123,6 +127,8 @@ class DesktopBackendRuntime implements BackendRuntime {
     _healthTimer = null;
     final process = _process;
     if (process == null) {
+      _closeHttpClient();
+      await _closeLogSink();
       if (_currentState.status != RuntimeStatus.stopped) {
         _emit(RuntimeStatus.stopped);
       }
@@ -132,6 +138,8 @@ class DesktopBackendRuntime implements BackendRuntime {
     _stopping = true;
     _emit(RuntimeStatus.stopping);
     await _terminate(process);
+    _closeHttpClient();
+    await _closeLogSink();
     if (identical(_process, process)) {
       _process = null;
       _emit(RuntimeStatus.stopped);
@@ -217,7 +225,8 @@ class DesktopBackendRuntime implements BackendRuntime {
   }
 
   Future<BackendInfo?> _requestInfo() async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 1);
+    final client = _httpClient ??= HttpClient()
+      ..connectionTimeout = const Duration(seconds: 1);
     try {
       final request = await client.getUrl(_apiUrl());
       final response = await request.close();
@@ -246,8 +255,6 @@ class DesktopBackendRuntime implements BackendRuntime {
       return null;
     } on FormatException {
       return null;
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -261,16 +268,9 @@ class DesktopBackendRuntime implements BackendRuntime {
         message: line,
       );
       _logs.add(log);
-      _logWrite = _logWrite
-          .then<void>((_) async {
-            await File.fromUri(
-              directories.logs.uri.resolve('backend.log'),
-            ).writeAsString(
-              '${log.timestamp.toIso8601String()} [${log.source.name}] ${log.message}\n',
-              mode: FileMode.append,
-            );
-          })
-          .catchError((Object _) {});
+      _logSink?.writeln(
+        '${log.timestamp.toIso8601String()} [${log.source.name}] ${log.message}',
+      );
     });
   }
 
@@ -278,6 +278,8 @@ class DesktopBackendRuntime implements BackendRuntime {
     if (!identical(_process, process)) return;
     _healthTimer?.cancel();
     _healthTimer = null;
+    _closeHttpClient();
+    unawaited(_closeLogSink());
     _process = null;
     if (_stopping) {
       _emit(RuntimeStatus.stopped);
@@ -309,4 +311,20 @@ class DesktopBackendRuntime implements BackendRuntime {
   File get _runtimeManifest => File.fromUri(
     _bundleDirectory.uri.resolve('data/backend/runtime-manifest.json'),
   );
+
+  void _closeHttpClient() {
+    _httpClient?.close(force: true);
+    _httpClient = null;
+  }
+
+  Future<void> _closeLogSink() async {
+    final logSink = _logSink;
+    _logSink = null;
+    if (logSink == null) return;
+    try {
+      await logSink.close();
+    } on FileSystemException {
+      // Logging failures must not interrupt backend lifecycle handling.
+    }
+  }
 }
