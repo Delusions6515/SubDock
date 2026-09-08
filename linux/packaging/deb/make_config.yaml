@@ -5,6 +5,8 @@ maintainer:
   email: 213381333+Delusions6515@users.noreply.github.com
 priority: optional
 section: net
+# Installed size in KiB for the current Linux release bundle.
+installed_size: 161736
 icon: macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png
 generic_name: Sub-Store Desktop Manager
 categories:

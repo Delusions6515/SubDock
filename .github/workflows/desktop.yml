@@ -112,6 +112,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          check-latest: true
+          cache: false
       - name: Prepare latest stable runtime resources
         run: |
           tool/prepare_backend.sh
