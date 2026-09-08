@@ -1,0 +1,16 @@
+pkgname=subdock
+pkgver=0.0.0
+pkgrel=1
+pkgdesc='Native desktop manager for Sub-Store'
+arch=('x86_64')
+url='https://github.com/Delusions6515/SubDock'
+license=('GPL-3.0-only')
+depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator')
+options=('!strip')
+
+package() {
+  install -dm755 "$pkgdir/opt/$pkgname"
+  cp -a "$startdir/bundle/." "$pkgdir/opt/$pkgname/"
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s "/opt/$pkgname/sub_dock" "$pkgdir/usr/bin/subdock"
+}
