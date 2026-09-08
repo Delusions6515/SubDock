@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'backend_runtime.dart';
 import 'runtime_directories.dart';
+import 'runtime_permissions.dart';
 
 class DesktopRuntimeProfile {
   const DesktopRuntimeProfile._(this.executableSuffix);
@@ -23,21 +24,27 @@ class DesktopBackendRuntime implements BackendRuntime {
     required this.directories,
     Directory? bundleDirectory,
     DesktopRuntimeProfile? profile,
-    this.port = 3001,
+    int port = 3001,
+    Map<String, String> userEnvironment = const <String, String>{},
   }) : _bundleDirectory =
            bundleDirectory ?? File(Platform.resolvedExecutable).parent,
-       _profile = profile ?? DesktopRuntimeProfile.current();
+       _profile = profile ?? DesktopRuntimeProfile.current(),
+       _defaultPort = port,
+       _userEnvironment = Map<String, String>.of(userEnvironment);
 
   static const _healthCheckInterval = Duration(seconds: 1);
   static const _healthCheckTimeout = Duration(seconds: 10);
   static const _httpRequestTimeout = Duration(seconds: 1);
   static const _stopTimeout = Duration(seconds: 5);
+  static const _maxLogFileBytes = 10 * 1024 * 1024;
+  static const _retainedLogFiles = 3;
   static final _binaryName = RegExp(r'^[A-Za-z0-9._-]+$');
 
   final RuntimeDirectories directories;
   final Directory _bundleDirectory;
   final DesktopRuntimeProfile _profile;
-  final int port;
+  final int _defaultPort;
+  Map<String, String> _userEnvironment;
   final _logs = StreamController<RuntimeLog>.broadcast(sync: true);
   final _states = StreamController<RuntimeState>.broadcast(sync: true);
 
@@ -49,6 +56,7 @@ class DesktopBackendRuntime implements BackendRuntime {
   Process? _process;
   HttpClient? _httpClient;
   IOSink? _logSink;
+  Future<void> _logWrites = Future<void>.value();
   Timer? _healthTimer;
   bool _stopping = false;
   bool _checkingHealth = false;
@@ -60,9 +68,15 @@ class DesktopBackendRuntime implements BackendRuntime {
   @override
   Uri get endpoint => Uri(
     scheme: 'http',
-    host: InternetAddress.loopbackIPv4.address,
+    host:
+        _environmentValue('SUB_STORE_BACKEND_API_HOST') ??
+        InternetAddress.loopbackIPv4.address,
     port: port,
   );
+
+  int get port =>
+      int.tryParse(_environmentValue('SUB_STORE_BACKEND_API_PORT') ?? '') ??
+      _defaultPort;
 
   @override
   Stream<RuntimeLog> get logs => _logs.stream;
@@ -96,6 +110,13 @@ class DesktopBackendRuntime implements BackendRuntime {
     await _stop();
     await _start();
   });
+
+  @override
+  Future<void> activateUserEnvironment(Map<String, String> environment) =>
+      _serialize(() async {
+        _ensureActive();
+        _userEnvironment = Map<String, String>.of(environment);
+      });
 
   @override
   Future<bool> isHealthy() async {
@@ -145,8 +166,7 @@ class DesktopBackendRuntime implements BackendRuntime {
       if (!await bundle.exists()) {
         throw StateError('Backend bundle is missing: ${bundle.path}');
       }
-      _logSink = File.fromUri(directories.logs.uri.resolve('backend.log'))
-          .openWrite(mode: FileMode.append);
+      await _openLogSink();
 
       final process = await Process.start(node, [
         bundle.path,
@@ -414,10 +434,51 @@ class DesktopBackendRuntime implements BackendRuntime {
         message: line,
       );
       if (!_logs.isClosed) _logs.add(log);
-      _logSink?.writeln(
-        '${log.timestamp.toIso8601String()} [${log.source.name}] ${log.message}',
-      );
+      unawaited(_writeLog(log));
     });
+  }
+
+  Future<void> _openLogSink() async {
+    final file = _logFile;
+    if (await file.exists() && await file.length() >= _maxLogFileBytes) {
+      await _rotateLogs();
+    }
+    _logSink = file.openWrite(mode: FileMode.append);
+    await restrictFileToCurrentUser(file);
+  }
+
+  Future<void> _writeLog(RuntimeLog log) {
+    final next = _logWrites.then((_) => _appendLog(log));
+    _logWrites = next.catchError((Object _) {});
+    return next;
+  }
+
+  Future<void> _appendLog(RuntimeLog log) async {
+    var sink = _logSink;
+    if (sink == null) return;
+    final line =
+        '${log.timestamp.toIso8601String()} [${log.source.name}] ${log.message}\n';
+    if (await _logFile.length() + utf8.encode(line).length > _maxLogFileBytes) {
+      await sink.flush();
+      await sink.close();
+      _logSink = null;
+      await _rotateLogs();
+      await _openLogSink();
+      sink = _logSink;
+      if (sink == null) return;
+    }
+    sink.write(line);
+  }
+
+  Future<void> _rotateLogs() async {
+    for (var index = _retainedLogFiles; index >= 1; index--) {
+      final replacement = File('${_logFile.path}.$index');
+      if (await replacement.exists()) await replacement.delete();
+      final source = index == 1
+          ? _logFile
+          : File('${_logFile.path}.${index - 1}');
+      if (await source.exists()) await source.rename(replacement.path);
+    }
   }
 
   void _handleExit(Process process, int exitCode) {
@@ -454,13 +515,29 @@ class DesktopBackendRuntime implements BackendRuntime {
     environment[pathKey] = originalPath.isEmpty
         ? binaryPath
         : '$binaryPath${Platform.pathSeparator}$originalPath';
+    environment.addAll(_userEnvironment);
+    environment.putIfAbsent(
+      'SUB_STORE_BACKEND_API_HOST',
+      () => InternetAddress.loopbackIPv4.address,
+    );
+    environment['SUB_STORE_BACKEND_API_PORT'] = '$port';
+    environment.putIfAbsent('SUB_STORE_BACKEND_MERGE', () => 'true');
+    environment.putIfAbsent('SUB_STORE_FRONTEND_BACKEND_PATH', () => '/');
+    environment.putIfAbsent(
+      'SUB_STORE_CORS_ALLOWED_ORIGINS',
+      () => endpoint.origin,
+    );
     environment.addAll(<String, String>{
-      'SUB_STORE_BACKEND_API_HOST': InternetAddress.loopbackIPv4.address,
-      'SUB_STORE_BACKEND_API_PORT': '$port',
       'SUB_STORE_DATA_BASE_PATH': directories.data.path,
+      'SUB_STORE_FRONTEND_PATH': File.fromUri(
+        _bundleDirectory.uri.resolve('data/frontend/'),
+      ).path,
     });
     return environment;
   }
+
+  String? _environmentValue(String key) =>
+      _userEnvironment[key] ?? Platform.environment[key];
 
   Uri _apiUrl() => endpoint.replace(path: 'api/utils/env');
 
@@ -479,6 +556,9 @@ class DesktopBackendRuntime implements BackendRuntime {
   Directory get _runtimeBin =>
       Directory.fromUri(_bundleDirectory.uri.resolve('data/runtime/bin/'));
 
+  File get _logFile =>
+      File.fromUri(directories.logs.uri.resolve('backend.log'));
+
   void _ensureActive() {
     if (_disposed) throw StateError('Backend runtime has been disposed');
   }
@@ -489,6 +569,11 @@ class DesktopBackendRuntime implements BackendRuntime {
   }
 
   Future<void> _closeLogSink() async {
+    try {
+      await _logWrites;
+    } catch (_) {
+      // Logging failures must not interrupt backend lifecycle handling.
+    }
     final logSink = _logSink;
     _logSink = null;
     if (logSink == null) return;

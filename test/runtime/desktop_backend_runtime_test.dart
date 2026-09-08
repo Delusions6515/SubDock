@@ -55,6 +55,9 @@ void main() {
             logFile.existsSync() &&
             logFile.readAsStringSync().contains('fixture stdout'),
       );
+      if (!Platform.isWindows) {
+        expect((await logFile.stat()).mode & 0x1ff, 0x180);
+      }
 
       await runtime.stop();
 
@@ -109,6 +112,40 @@ void main() {
             .exists(),
         isTrue,
       );
+    });
+
+    test('activates user environment on the next backend start', () async {
+      final configuredPort = await _unusedPort();
+      final logs = <RuntimeLog>[];
+      final subscription = runtime.logs.listen(logs.add);
+      addTearDown(subscription.cancel);
+
+      await runtime.activateUserEnvironment({
+        'SUB_STORE_BACKEND_API_PORT': '$configuredPort',
+        'SUB_STORE_DATA_BASE_PATH': '/not-user-controlled',
+      });
+      await runtime.start();
+
+      expect(runtime.port, configuredPort);
+      expect(runtime.endpoint.port, configuredPort);
+      expect(await runtime.isHealthy(), isTrue);
+      expect(
+        logs.map((log) => log.message),
+        contains('data path:${runtime.directories.data.path}'),
+      );
+    });
+
+    test('rotates an oversized backend log before startup', () async {
+      final log = File.fromUri(
+        temp.uri.resolve('application-support/logs/backend.log'),
+      );
+      await log.parent.create(recursive: true);
+      await log.writeAsBytes(List<int>.filled(10 * 1024 * 1024, 0));
+
+      await runtime.start();
+
+      expect(await File('${log.path}.1').exists(), isTrue);
+      expect(await log.length(), lessThan(10 * 1024 * 1024));
     });
 
     test('rejects a port held by an unknown process', () async {

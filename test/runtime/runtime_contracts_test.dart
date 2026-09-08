@@ -38,5 +38,17 @@ void main() {
       directories.components.path,
       directories.staging.path,
     }, hasLength(6));
+    if (!Platform.isWindows) {
+      for (final directory in [
+        directories.data,
+        directories.logs,
+        directories.backups,
+        directories.config,
+        directories.components,
+        directories.staging,
+      ]) {
+        expect((await directory.stat()).mode & 0x1ff, 0x1c0);
+      }
+    }
   });
 }

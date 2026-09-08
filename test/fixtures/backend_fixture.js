@@ -4,6 +4,7 @@ const mode = process.env.TEST_BACKEND_MODE || 'healthy';
 
 console.log('fixture stdout');
 console.error('fixture stderr');
+console.log(`data path:${process.env.SUB_STORE_DATA_BASE_PATH}`);
 
 if (mode === 'crash') {
   process.exitCode = 1;

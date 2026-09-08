@@ -1,51 +1,136 @@
 import 'dart:async';
-import 'dart:ui';
+import 'dart:io';
+import 'dart:ui' show Size;
 
+import 'package:flutter/material.dart'
+    show FilledButton, NavigationBar, NavigationRail, OutlinedButton;
+import 'package:flutter/scheduler.dart' show AppLifecycleState;
+import 'package:flutter/widgets.dart' show SizedBox;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sub_dock/app/app.dart';
+import 'package:sub_dock/app/app_coordinator.dart';
 import 'package:sub_dock/runtime/backend_runtime.dart';
+import 'package:sub_dock/runtime/runtime_directories.dart';
+import 'package:sub_dock/settings/backend_env_store.dart';
 
 void main() {
-  testWidgets('dashboard controls the backend through its abstraction', (
+  testWidgets('runtime controls the backend through its abstraction', (
     WidgetTester tester,
   ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
     final runtime = _FakeBackendRuntime();
-    addTearDown(runtime.dispose);
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final coordinator = AppCoordinator(
+      runtime: runtime,
+      environmentStore: BackendEnvStore(directories!),
+    );
 
-    await tester.pumpWidget(SubDockApp(runtime: runtime));
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+      ),
+    );
 
-    expect(find.text('Stopped'), findsOneWidget);
-    expect(find.text('Node Version'), findsOneWidget);
-    expect(find.text('Backend Version'), findsOneWidget);
-    expect(find.text('Port'), findsOneWidget);
-
-    await tester.tap(find.text('Start'));
+    await tester.tap(find.text('运行状态'));
     await tester.pump();
 
+    expect(find.text('已停止'), findsOneWidget);
+    expect(find.text('Node'), findsOneWidget);
+    expect(find.text('Backend'), findsOneWidget);
+    expect(find.text('Port'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '启动'))
+          .onPressed,
+      isNotNull,
+    );
+
+    tester
+        .widget<FilledButton>(find.widgetWithText(FilledButton, '启动'))
+        .onPressed!();
+    await tester.pump(const Duration(milliseconds: 1));
+
     expect(runtime.starts, 1);
-    expect(find.text('Running'), findsOneWidget);
+    expect(find.text('运行中'), findsOneWidget);
     expect(find.text('v24.20.0'), findsOneWidget);
     expect(find.text('fixture-backend'), findsOneWidget);
     expect(find.text('3001'), findsOneWidget);
 
-    await tester.tap(find.text('Stop'));
-    await tester.pump();
+    tester
+        .widget<OutlinedButton>(find.widgetWithText(OutlinedButton, '停止'))
+        .onPressed!();
+    await tester.pump(const Duration(milliseconds: 1));
 
     expect(runtime.stops, 1);
-    expect(find.text('Stopped'), findsOneWidget);
+    expect(find.text('已停止'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('dashboard stops the runtime when the app detaches', (
+  testWidgets('app stops the runtime when it detaches', (
     WidgetTester tester,
   ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
     final runtime = _FakeBackendRuntime();
-    addTearDown(runtime.dispose);
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final coordinator = AppCoordinator(
+      runtime: runtime,
+      environmentStore: BackendEnvStore(directories!),
+    );
 
-    await tester.pumpWidget(SubDockApp(runtime: runtime));
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+      ),
+    );
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
     await tester.pump();
 
     expect(runtime.stops, 1);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('uses a navigation bar below the 600 pixel breakpoint', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final runtime = _FakeBackendRuntime();
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final coordinator = AppCoordinator(
+      runtime: runtime,
+      environmentStore: BackendEnvStore(directories!),
+    );
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.binding.setSurfaceSize(const Size(599, 800));
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+      ),
+    );
+    expect(find.byType(NavigationBar), findsOneWidget);
+
+    await tester.binding.setSurfaceSize(const Size(600, 800));
+    await tester.pump();
+    expect(find.byType(NavigationRail), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 }
 
@@ -84,6 +169,9 @@ class _FakeBackendRuntime implements BackendRuntime {
   Future<void> restart() async {}
 
   @override
+  Future<void> activateUserEnvironment(Map<String, String> environment) async {}
+
+  @override
   Future<void> start() async {
     starts++;
     _states.add(
@@ -101,6 +189,7 @@ class _FakeBackendRuntime implements BackendRuntime {
 
   @override
   Future<void> dispose() async {
+    await stop();
     await _logs.close();
     await _states.close();
   }

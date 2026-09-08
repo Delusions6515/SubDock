@@ -1,0 +1,21 @@
+{
+  "@@locale": "zh",
+  "appTitle": "SubDock",
+  "manage": "管理",
+  "runtimeStatus": "运行状态",
+  "logs": "日志",
+  "settings": "设置",
+  "start": "启动",
+  "stop": "停止",
+  "restart": "重启",
+  "save": "保存",
+  "ready": "就绪",
+  "unavailable": "不可用",
+  "processing": "处理中",
+  "stopped": "已停止",
+  "starting": "正在启动",
+  "running": "运行中",
+  "stopping": "正在停止",
+  "unhealthy": "不健康",
+  "crashed": "已崩溃"
+}

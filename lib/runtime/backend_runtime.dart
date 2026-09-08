@@ -11,6 +11,8 @@ abstract class BackendRuntime {
 
   Future<void> restart();
 
+  Future<void> activateUserEnvironment(Map<String, String> environment);
+
   Future<bool> isHealthy();
 
   Future<BackendInfo> info();
