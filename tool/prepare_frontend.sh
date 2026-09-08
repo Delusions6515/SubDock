@@ -29,6 +29,7 @@ staging_dir="$work_dir/frontend"
 mkdir -p "$staging_dir"
 cp -R "$source_dir/dist/." "$staging_dir"
 test -f "$staging_dir/index.html"
+printf '%s\n' "$frontend_tag" > "$staging_dir/version"
 
 rm -rf "$output_dir"
 mv "$staging_dir" "$output_dir"

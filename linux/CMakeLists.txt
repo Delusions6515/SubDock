@@ -79,7 +79,7 @@ set(SUBDOCK_RESOURCES_DIR "${SUBDOCK_PROJECT_DIR}/.subdock")
 set(SUBDOCK_BACKEND_DIR "${SUBDOCK_RESOURCES_DIR}/backend")
 set(SUBDOCK_FRONTEND_DIR "${SUBDOCK_RESOURCES_DIR}/frontend")
 set(SUBDOCK_RUNTIME_DIR "${SUBDOCK_RESOURCES_DIR}/runtime/linux-x64")
-foreach(backend_file sub-store.bundle.js runtime-manifest.json)
+foreach(backend_file sub-store.bundle.js runtime-manifest.json version)
   if(NOT EXISTS "${SUBDOCK_BACKEND_DIR}/${backend_file}")
     message(FATAL_ERROR "Missing ${backend_file}. Run tool/prepare_backend.sh before building Linux.")
   endif()
@@ -124,6 +124,7 @@ install(PROGRAMS
 install(FILES
   "${SUBDOCK_BACKEND_DIR}/sub-store.bundle.js"
   "${SUBDOCK_BACKEND_DIR}/runtime-manifest.json"
+  "${SUBDOCK_BACKEND_DIR}/version"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/backend"
   COMPONENT Runtime)
 

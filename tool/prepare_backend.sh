@@ -24,5 +24,6 @@ download runtime-manifest.json
 mkdir -p "$output_dir"
 install -m 0644 "$work_dir/sub-store.bundle.js" "$output_dir/sub-store.bundle.js"
 install -m 0644 "$work_dir/runtime-manifest.json" "$output_dir/runtime-manifest.json"
+printf '%s\n' "$backend_tag" > "$output_dir/version"
 
 printf 'Prepared Sub-Store %s at %s\n' "$backend_tag" "$output_dir"
