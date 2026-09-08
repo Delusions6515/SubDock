@@ -1,9 +1,19 @@
 name: Desktop artifacts
 
 on:
-  pull_request:
   push:
     branches: [main]
+    paths:
+      - 'linux/**'
+      - 'windows/**'
+      - 'macos/**'
+      - 'lib/**'
+      - 'tool/**'
+      - 'assets/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/desktop.yml'
   workflow_dispatch:
 
 permissions:
@@ -12,130 +22,180 @@ permissions:
 jobs:
   linux:
     runs-on: ubuntu-24.04
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+
       - name: Install Linux packaging dependencies
-        run: sudo apt-get update && sudo apt-get install -y rpm patchelf libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev
-      - name: Prepare latest stable runtime resources
         run: |
-          tool/prepare_backend.sh
-          tool/prepare_frontend.sh
-          tool/prepare_runtime.sh linux-x64
+          sudo apt-get update
+          sudo apt-get install -y \
+            rpm \
+            patchelf \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev
+
       - name: Analyze and test
         run: |
           flutter pub get
           flutter analyze
           flutter test
+
+      - name: Prepare latest stable runtime resources
+        run: |
+          tool/prepare_backend.sh
+          tool/prepare_frontend.sh
+          tool/prepare_runtime.sh linux-x64
+
       - name: Build and verify bundle
         run: |
           flutter build linux --release
           tool/verify_bundle.sh build/linux/x64/release/bundle
+
       - name: Package DEB and RPM
         run: |
           dart pub global activate fastforge 0.6.12
           fastforge package --platform linux --targets deb,rpm
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux-packages
-          path: |
-            dist/**
-            build/linux/x64/release/bundle/**
+          path: dist/**
           if-no-files-found: error
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux-bundle
           path: build/linux/x64/release/bundle
           if-no-files-found: error
 
+
   arch:
     needs: linux
+
     runs-on: ubuntu-24.04
     container: archlinux:latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Arch packaging tools
         run: pacman -Syu --noconfirm base-devel
+
       - uses: actions/download-artifact@v4
         with:
           name: linux-bundle
           path: build/linux/x64/release/bundle
+
       - name: Build standard Arch package
         run: tool/package_arch.sh
+
       - uses: actions/upload-artifact@v4
         with:
           name: arch-package
           path: dist/*.pkg.tar.zst
           if-no-files-found: error
 
+
   windows:
     runs-on: windows-2025
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+
       - name: Prepare latest stable runtime resources
         shell: bash
         run: |
           tool/prepare_backend.sh
           tool/prepare_frontend.sh
           tool/prepare_runtime.sh windows-x64
+
       - name: Build and verify bundle
         shell: bash
         run: |
           flutter pub get
           flutter build windows --release
-          tool/verify_bundle.sh build/windows/x64/runner/Release windows
+          tool/verify_bundle.sh \
+            build/windows/x64/runner/Release \
+            windows
+
       - name: Package EXE
         shell: bash
         run: |
           choco install innosetup --no-progress --yes
           dart pub global activate fastforge 0.6.12
-          fastforge package --platform windows --targets exe
+          dart pub global run fastforge:main package --platform windows --targets exe
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-exe
           path: dist/**
           if-no-files-found: error
 
+
   macos:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-14, macos-13]
+        include:
+          - runner: macos-14
+            arch: arm64
+            runtime: darwin-arm64
+
+          - runner: macos-15-intel
+            arch: x64
+            runtime: darwin-x64
+
     runs-on: ${{ matrix.runner }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+
       - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
+          # Shoutrrr's go.mod is cloned later, outside this checkout.
           cache: false
+
       - name: Prepare latest stable runtime resources
         run: |
           tool/prepare_backend.sh
           tool/prepare_frontend.sh
-          if [ "$(uname -m)" = arm64 ]; then target=darwin-arm64; else target=darwin-x64; fi
-          tool/prepare_runtime.sh "$target"
+          tool/prepare_runtime.sh "${{ matrix.runtime }}"
+
       - name: Build and verify app
         run: |
           flutter pub get
           flutter build macos --release
+
           app=build/macos/Build/Products/Release/sub_dock.app
           tool/verify_bundle.sh "$app/Contents/MacOS"
+
       - name: Package DMG
         run: |
           npm install --global appdmg
           dart pub global activate fastforge 0.6.12
           fastforge package --platform macos --targets dmg
+
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ matrix.runner }}
+          name: macos-${{ matrix.arch }}
           path: dist/**
           if-no-files-found: error
