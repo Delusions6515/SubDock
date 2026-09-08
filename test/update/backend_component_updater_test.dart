@@ -33,6 +33,11 @@ void main() {
       );
       await _write(directories.data, 'settings.json', '{"generation":1}');
       final metadata = ComponentMetadataStore(directories.components);
+      await _write(
+        directories.components,
+        'backend/2.37.0/sub-store.bundle.js',
+        'stale',
+      );
       final runtime = _FakeRuntime();
       final updater = BackendComponentUpdater(
         runtime: runtime,
@@ -67,6 +72,11 @@ void main() {
           '${directories.components.path}/backend/2.39.0/sub-store.bundle.js',
         ).exists(),
         isTrue,
+      );
+      expect(
+        await Directory('${directories.components.path}/backend/2.37.0')
+            .exists(),
+        isFalse,
       );
     },
   );

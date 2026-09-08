@@ -32,6 +32,11 @@ void main() {
         previous: '2.31.3',
       ),
     );
+    expect(
+      await Directory('${fixture.directories.components.path}/frontend/2.30.0')
+          .exists(),
+      isFalse,
+    );
   });
 
   test('rejects a ZIP path that escapes the candidate directory', () async {
@@ -88,6 +93,11 @@ Future<_Fixture> _fixture({bool malicious = false, bool healthy = true}) async {
     Directory.fromUri(root.uri.resolve('application-support/')),
   );
   final metadata = ComponentMetadataStore(directories.components);
+  await _write(
+    directories.components,
+    'frontend/2.30.0/index.html',
+    'stale frontend',
+  );
   final runtime = _FakeRuntime(healthy: healthy);
   final updater = FrontendComponentUpdater(
     runtime: runtime,

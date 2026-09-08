@@ -3,6 +3,7 @@ import '../runtime/runtime_directories.dart';
 import 'backend_component_updater.dart';
 import 'component_metadata_store.dart';
 import 'component_resource_resolver.dart';
+import 'component_storage.dart';
 import 'component_update_checker.dart';
 import 'data_backup_store.dart';
 import 'frontend_component_updater.dart';
@@ -66,6 +67,8 @@ class ComponentUpdateService implements ComponentUpdateOperations {
   final ComponentUpdateChecker _checker;
   final BackendComponentUpdater _backend;
   final FrontendComponentUpdater _frontend;
+
+  ComponentStorage get _storage => ComponentStorage(_directories.components);
 
   @override
   Future<ComponentVersionStatus> status(ComponentKind kind) async {
@@ -155,6 +158,7 @@ class ComponentUpdateService implements ComponentUpdateOperations {
           previous: active,
         ),
       );
+      await _storage.retain(ComponentKind.backend, [target, active]);
     } catch (_) {
       // Do the same recovery immediately. If this itself fails, leave pending
       // metadata intact so startup recovery can safely retry it.
@@ -192,6 +196,7 @@ class ComponentUpdateService implements ComponentUpdateOperations {
           previous: active,
         ),
       );
+      await _storage.retain(ComponentKind.frontend, [target, active]);
     } catch (_) {
       await _metadataStore.save(ComponentKind.frontend, metadata);
       await _runtime.restart();

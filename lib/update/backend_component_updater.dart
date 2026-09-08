@@ -6,6 +6,7 @@ import '../runtime/runtime_directories.dart';
 import '../runtime/runtime_permissions.dart';
 import 'component_metadata_store.dart';
 import 'component_resource_resolver.dart';
+import 'component_storage.dart';
 import 'data_backup_store.dart';
 import 'github_release_client.dart';
 
@@ -99,6 +100,8 @@ class BackendComponentUpdater {
           previous: previous,
         ),
       );
+      await ComponentStorage(directories.components)
+          .retain(ComponentKind.backend, [version, previous]);
     } catch (_) {
       if (pendingSaved) {
         await _rollback(prior, backupId!);

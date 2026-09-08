@@ -7,6 +7,7 @@ import '../runtime/runtime_directories.dart';
 import '../runtime/runtime_permissions.dart';
 import 'component_metadata_store.dart';
 import 'component_resource_resolver.dart';
+import 'component_storage.dart';
 import 'github_release_client.dart';
 
 /// Applies a Frontend ZIP release without allowing its archive to escape the
@@ -88,6 +89,8 @@ class FrontendComponentUpdater {
           previous: previous,
         ),
       );
+      await ComponentStorage(directories.components)
+          .retain(ComponentKind.frontend, [version, previous]);
     } catch (_) {
       if (pendingSaved) await _rollback(prior);
       rethrow;
