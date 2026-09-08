@@ -17,6 +17,7 @@ class DesktopLifecycle with WindowListener, TrayListener {
   var _exiting = false;
 
   Future<void> initialize() async {
+    await windowManager.setPreventClose(true);
     windowManager.addListener(this);
     trayManager.addListener(this);
     try {

@@ -74,10 +74,7 @@ Future<void> main() async {
   }
   final lifecycle = DesktopLifecycle(onExit: coordinator.dispose);
   await lifecycle.initialize();
-  await windowManager.waitUntilReadyToShow(
-    const WindowOptions(title: 'SubDock', minimumSize: Size(600, 480)),
-    _showWindow,
-  );
+  await windowManager.waitUntilReadyToShow(desktopWindowOptions(), _showWindow);
   runApp(
     SubDockApp(
       coordinator: coordinator,
@@ -93,3 +90,9 @@ Future<void> _showWindow() async {
   await windowManager.show();
   await windowManager.focus();
 }
+
+WindowOptions desktopWindowOptions() => const WindowOptions(
+  title: 'SubDock',
+  minimumSize: Size(600, 480),
+  titleBarStyle: TitleBarStyle.hidden,
+);
