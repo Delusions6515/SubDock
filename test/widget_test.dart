@@ -5,7 +5,7 @@ import 'dart:ui' show Size;
 import 'package:flutter/material.dart'
     show FilledButton, NavigationBar, NavigationRail, OutlinedButton;
 import 'package:flutter/scheduler.dart' show AppLifecycleState;
-import 'package:flutter/widgets.dart' show SizedBox;
+import 'package:flutter/widgets.dart' show Offstage, SizedBox, ValueKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sub_dock/app/app.dart';
 import 'package:sub_dock/app/app_coordinator.dart';
@@ -40,6 +40,9 @@ void main() {
     await tester.tap(find.text('运行状态'));
     await tester.pump();
 
+    final managementPage = find.byKey(const ValueKey('page-manage'));
+    expect(managementPage, findsOneWidget);
+    expect(tester.widget<Offstage>(managementPage).offstage, isTrue);
     expect(find.text('已停止'), findsOneWidget);
     expect(find.text('Node'), findsOneWidget);
     expect(find.text('Backend'), findsOneWidget);

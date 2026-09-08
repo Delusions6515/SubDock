@@ -82,6 +82,8 @@ class BackendEnvPolicy {
   static const port = 'SUB_STORE_BACKEND_API_PORT';
   static const merge = 'SUB_STORE_BACKEND_MERGE';
   static const frontendBackendPath = 'SUB_STORE_FRONTEND_BACKEND_PATH';
+  static const frontendHost = 'SUB_STORE_FRONTEND_HOST';
+  static const frontendPort = 'SUB_STORE_FRONTEND_PORT';
   static const corsAllowedOrigins = 'SUB_STORE_CORS_ALLOWED_ORIGINS';
 
   static const reservedKeys = <String>{dataBasePath, frontendPath};

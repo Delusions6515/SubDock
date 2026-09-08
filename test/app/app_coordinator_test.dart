@@ -29,7 +29,30 @@ void main() {
     ]);
 
     expect(runtime.operations, ['environment:3002', 'start']);
-    expect(coordinator.webUiUri, Uri.parse('http://127.0.0.1:3002/'));
+    expect(coordinator.webUiUri.path, '/');
+    expect(coordinator.webUiUri.queryParameters, isEmpty);
+  });
+
+  test('opens a standalone frontend with its proxied API URL', () async {
+    final temp = await Directory.systemTemp.createTemp('sub_dock_coordinator_');
+    addTearDown(() => temp.delete(recursive: true));
+    final coordinator = AppCoordinator(
+      runtime: _FakeRuntime(),
+      environmentStore: BackendEnvStore(
+        await RuntimeDirectories.fromBaseDirectory(temp),
+      ),
+    );
+
+    await coordinator.saveEnvironment(
+      BackendEnvDocument.parse(
+        'SUB_STORE_BACKEND_MERGE=false\n'
+        'SUB_STORE_FRONTEND_PORT=3100\n'
+        'SUB_STORE_FRONTEND_BACKEND_PATH=/subdock\n',
+      ),
+    );
+
+    expect(coordinator.webUiUri, Uri.parse('http://127.0.0.1:3100/'));
+    expect(coordinator.webUiApiUri, Uri.parse('http://127.0.0.1:3100/subdock'));
   });
 }
 

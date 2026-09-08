@@ -17,13 +17,29 @@ class AppCoordinator {
 
   bool get canOpenWebUi =>
       environmentIssues.isEmpty &&
-      BackendEnvPolicy.isMergeEnabledFor(_environment) &&
       (_environment.values[BackendEnvPolicy.frontendBackendPath] ?? '/')
           .startsWith('/');
 
-  Uri get webUiUri => runtime.endpoint.replace(
+  Uri get webUiUri => _frontendOrigin.replace(path: '/');
+
+  Uri get webUiApiUri => _frontendOrigin.replace(
     path: _environment.values[BackendEnvPolicy.frontendBackendPath] ?? '/',
   );
+
+  Uri get _frontendOrigin {
+    if (BackendEnvPolicy.isMergeEnabledFor(_environment)) {
+      return runtime.endpoint;
+    }
+    final port = int.tryParse(
+      _environment.values[BackendEnvPolicy.frontendPort] ?? '',
+    );
+    return runtime.endpoint.replace(
+      host:
+          _environment.values[BackendEnvPolicy.frontendHost] ??
+          runtime.endpoint.host,
+      port: port != null && port >= 1 && port <= 65535 ? port : 3001,
+    );
+  }
 
   Future<void> loadEnvironment() => _serialize(() async {
     final document = await environmentStore.load();

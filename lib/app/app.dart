@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_all/webview_all.dart';
 
 import '../l10n/generated/app_localizations.dart';
@@ -231,7 +233,16 @@ class _SubDockAppState extends State<SubDockApp> {
         onRestart: () => _run(widget.coordinator.restart),
       ),
     ];
-    final body = IndexedStack(index: _page.index, children: pages);
+    final body = Stack(
+      children: [
+        for (var index = 0; index < pages.length; index++)
+          Offstage(
+            key: ValueKey('page-${_AppPage.values[index].name}'),
+            offstage: index != _page.index,
+            child: pages[index],
+          ),
+      ],
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.appTitle),
@@ -320,6 +331,8 @@ class _ManagePage extends StatefulWidget {
 }
 
 class _ManagePageState extends State<_ManagePage> {
+  static const _maxBlobBytes = 16 * 1024 * 1024;
+
   WebViewController? _controller;
   String? _webViewError;
 
@@ -350,11 +363,140 @@ class _ManagePageState extends State<_ManagePage> {
     setState(() => _controller = controller);
     try {
       await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await controller.setNavigationDelegate(
+        NavigationDelegate(onNavigationRequest: _onNavigationRequest),
+      );
+      await controller.addJavaScriptChannel(
+        'SubDockBlob',
+        onMessageReceived: (message) => unawaited(_saveBlob(message.message)),
+      );
+      await controller.addUserScript(
+        const WebViewUserScript(source: _blobDownloadBridge),
+      );
       await controller.loadRequest(widget.coordinator.webUiUri);
     } catch (error) {
       if (mounted) setState(() => _webViewError = '$error');
     }
   }
+
+  Future<NavigationDecision> _onNavigationRequest(
+    NavigationRequest request,
+  ) async {
+    final uri = Uri.tryParse(request.url);
+    if (uri == null) return NavigationDecision.prevent;
+    if (_sameOrigin(uri, widget.coordinator.webUiUri)) {
+      if (_isDownloadUri(uri)) {
+        unawaited(_saveHttpDownload(uri));
+        return NavigationDecision.prevent;
+      }
+      return NavigationDecision.navigate;
+    }
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
+      try {
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          throw StateError('系统浏览器无法打开 $uri');
+        }
+      } catch (error) {
+        if (mounted) setState(() => _webViewError = '$error');
+      }
+    }
+    return NavigationDecision.prevent;
+  }
+
+  Future<void> _saveHttpDownload(Uri uri) async {
+    try {
+      final location = await getSaveLocation(
+        suggestedName: _downloadName(uri.pathSegments.lastOrNull),
+      );
+      if (location == null) return;
+
+      final client = HttpClient();
+      try {
+        final response = await (await client.getUrl(uri)).close();
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw HttpException('下载失败：HTTP ${response.statusCode}', uri: uri);
+        }
+        final sink = File(location.path).openWrite();
+        try {
+          await response.forEach(sink.add);
+          await sink.flush();
+        } finally {
+          await sink.close();
+        }
+      } finally {
+        client.close(force: true);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _webViewError = '$error');
+    }
+  }
+
+  Future<void> _saveBlob(String message) async {
+    try {
+      final payload = jsonDecode(message);
+      if (payload is! Map<String, dynamic>) {
+        throw const FormatException('Blob 导出数据格式无效');
+      }
+      if (payload['error'] case final String error) throw StateError(error);
+      final data = payload['data'];
+      if (data is! String || data.length > (_maxBlobBytes * 4 ~/ 3) + 4) {
+        throw const FormatException('Blob 导出超过 16 MiB 限制');
+      }
+      final bytes = base64Decode(data);
+      if (bytes.length > _maxBlobBytes) {
+        throw const FormatException('Blob 导出超过 16 MiB 限制');
+      }
+      final location = await getSaveLocation(
+        suggestedName: _downloadName(payload['name'] as String?),
+      );
+      if (location == null) return;
+      await File(location.path).writeAsBytes(bytes, flush: true);
+    } catch (error) {
+      if (mounted) setState(() => _webViewError = '$error');
+    }
+  }
+
+  static bool _sameOrigin(Uri first, Uri second) =>
+      first.scheme == second.scheme &&
+      first.host == second.host &&
+      first.port == second.port;
+
+  bool _isDownloadUri(Uri uri) {
+    final path = widget.coordinator.webUiApiUri.path;
+    final prefix = path == '/' ? '' : path.replaceFirst(RegExp(r'/$'), '');
+    return uri.path == '$prefix/download' ||
+        uri.path.startsWith('$prefix/download/');
+  }
+
+  static String _downloadName(String? value) {
+    final name = (value == null || value.isEmpty ? 'download' : value)
+        .replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    return name.isEmpty || name == '.' || name == '..' ? 'download' : name;
+  }
+
+  static const _blobDownloadBridge = r'''(() => {
+  document.addEventListener('click', async event => {
+    if (!(event.target instanceof Element)) return;
+    const link = event.target.closest('a[download]');
+    if (!link || !link.href.startsWith('blob:')) return;
+    event.preventDefault();
+    try {
+      const blob = await (await fetch(link.href)).blob();
+      if (blob.size > 16 * 1024 * 1024) {
+        SubDockBlob.postMessage(JSON.stringify({error: 'Blob export exceeds 16 MiB'}));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => SubDockBlob.postMessage(JSON.stringify({
+        name: link.download || 'download',
+        data: String(reader.result).split(',', 2)[1],
+      }));
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      SubDockBlob.postMessage(JSON.stringify({error: String(error)}));
+    }
+  }, true);
+})();''';
 
   @override
   Widget build(BuildContext context) {
