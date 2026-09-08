@@ -31,5 +31,7 @@ mkdir -p "$destination"
 cp -R "$runtime_dir" "$destination/runtime"
 cp -R "$resources_dir/backend" "$destination/backend"
 cp -R "$resources_dir/frontend" "$destination/frontend"
+cp "$project_dir/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png" \
+  "$destination/tray_icon.png"
 mkdir -p "$destination/licenses"
 cp "$project_dir/LICENSE" "$destination/licenses/GPL-3.0-only.txt"

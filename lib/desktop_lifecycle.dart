@@ -6,9 +6,12 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 class DesktopLifecycle with WindowListener, TrayListener {
-  DesktopLifecycle({required this.onExit});
+  DesktopLifecycle({required this.onExit, Directory? bundleDirectory})
+    : _bundleDirectory =
+          bundleDirectory ?? File(Platform.resolvedExecutable).parent;
 
   final Future<void> Function() onExit;
+  final Directory _bundleDirectory;
   final warning = ValueNotifier<String?>(null);
   var _trayReady = false;
   var _exiting = false;
@@ -18,9 +21,10 @@ class DesktopLifecycle with WindowListener, TrayListener {
     trayManager.addListener(this);
     try {
       await trayManager.setIcon(
-        Platform.isWindows
-            ? 'windows/runner/resources/app_icon.ico'
-            : 'macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png',
+        trayIconPath(
+          bundleDirectory: _bundleDirectory,
+          isWindows: Platform.isWindows,
+        ),
       );
       await trayManager.setToolTip('SubDock');
       await trayManager.setContextMenu(
@@ -81,3 +85,10 @@ class DesktopLifecycle with WindowListener, TrayListener {
     await windowManager.focus();
   }
 }
+
+String trayIconPath({
+  required Directory bundleDirectory,
+  required bool isWindows,
+}) => File.fromUri(
+  bundleDirectory.uri.resolve('data/tray_icon${isWindows ? '.ico' : '.png'}'),
+).path;

@@ -6,6 +6,9 @@ platform=${2:-unix}
 suffix=
 if test "$platform" = windows; then
   suffix=.exe
+  tray_icon="$bundle_dir/data/tray_icon.ico"
+else
+  tray_icon="$bundle_dir/data/tray_icon.png"
 fi
 
 for file in \
@@ -16,7 +19,8 @@ for file in \
   "$bundle_dir/data/backend/version" \
   "$bundle_dir/data/frontend/index.html" \
   "$bundle_dir/data/frontend/version" \
-  "$bundle_dir/data/licenses/GPL-3.0-only.txt"; do
+  "$bundle_dir/data/licenses/GPL-3.0-only.txt" \
+  "$tray_icon"; do
   test -f "$file"
 done
 

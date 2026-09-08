@@ -132,6 +132,12 @@ install(DIRECTORY "${SUBDOCK_FRONTEND_DIR}/"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/frontend"
   COMPONENT Runtime)
 
+install(FILES
+  "${SUBDOCK_PROJECT_DIR}/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  RENAME "tray_icon.png"
+  COMPONENT Runtime)
+
 install(FILES "${SUBDOCK_PROJECT_DIR}/LICENSE"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/licenses"
   RENAME "GPL-3.0-only.txt"
