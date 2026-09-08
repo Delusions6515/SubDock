@@ -340,9 +340,13 @@ class _ManagePage extends StatefulWidget {
 
 class _ManagePageState extends State<_ManagePage> {
   static const _maxBlobBytes = 16 * 1024 * 1024;
+  static final _webView2DownloadUri = Uri.parse(
+    'https://developer.microsoft.com/microsoft-edge/webview2/',
+  );
 
   WebViewController? _controller;
   String? _webViewError;
+  var _missingWebView2 = false;
 
   bool get _ready =>
       widget.state.status == RuntimeStatus.running &&
@@ -368,7 +372,11 @@ class _ManagePageState extends State<_ManagePage> {
   Future<void> _ensureController() async {
     if (!_ready || _controller != null) return;
     final controller = WebViewController();
-    setState(() => _controller = controller);
+    setState(() {
+      _controller = controller;
+      _webViewError = null;
+      _missingWebView2 = false;
+    });
     try {
       await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
       await controller.setNavigationDelegate(
@@ -383,7 +391,14 @@ class _ManagePageState extends State<_ManagePage> {
       );
       await controller.loadRequest(widget.coordinator.webUiUri);
     } catch (error) {
-      if (mounted) setState(() => _webViewError = '$error');
+      if (mounted) {
+        setState(() {
+          _missingWebView2 = _isMissingWebView2(error);
+          _webViewError = _missingWebView2
+              ? '未检测到 Microsoft Edge WebView2 Runtime。请安装后重试。'
+              : '$error';
+        });
+      }
     }
   }
 
@@ -469,6 +484,23 @@ class _ManagePageState extends State<_ManagePage> {
       first.host == second.host &&
       first.port == second.port;
 
+  bool _isMissingWebView2(Object error) {
+    if (!Platform.isWindows) return false;
+    final message = '$error'.toLowerCase();
+    return message.contains('webview2') || message.contains('edge runtime');
+  }
+
+  Future<void> _openWebView2Download() async {
+    if (!await launchUrl(
+      _webView2DownloadUri,
+      mode: LaunchMode.externalApplication,
+    )) {
+      if (mounted) {
+        setState(() => _webViewError = '系统浏览器无法打开 WebView2 下载页面');
+      }
+    }
+  }
+
   bool _isDownloadUri(Uri uri) {
     final path = widget.coordinator.webUiApiUri.path;
     final prefix = path == '/' ? '' : path.replaceFirst(RegExp(r'/$'), '');
@@ -547,7 +579,19 @@ class _ManagePageState extends State<_ManagePage> {
               color: Theme.of(context).colorScheme.errorContainer,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(_webViewError!),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_webViewError!),
+                    if (_missingWebView2)
+                      TextButton(
+                        onPressed: () => unawaited(_openWebView2Download()),
+                        child: const Text('打开 WebView2 官方下载页'),
+                      ),
+                  ],
+                ),
+                // The button is rendered only for the Windows runtime error
+                // that has a documented user-installable remedy.
               ),
             ),
           ),
