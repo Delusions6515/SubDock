@@ -81,7 +81,9 @@ Future<void> main() async {
       autoStart: startupBlocker == null,
       initialError: startupBlocker,
       desktopWarning: lifecycle.warning,
-      onExit: lifecycle.exit,
+      onMinimize: lifecycle.minimize,
+      onToggleFullscreen: lifecycle.toggleFullscreen,
+      onCloseToTray: lifecycle.closeToTray,
     ),
   );
 }

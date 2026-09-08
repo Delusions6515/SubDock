@@ -28,7 +28,9 @@ class SubDockApp extends StatefulWidget {
     this.enableWebView = true,
     this.initialError,
     this.desktopWarning,
-    this.onExit,
+    this.onMinimize,
+    this.onToggleFullscreen,
+    this.onCloseToTray,
   });
 
   final AppCoordinator coordinator;
@@ -36,7 +38,9 @@ class SubDockApp extends StatefulWidget {
   final bool enableWebView;
   final String? initialError;
   final ValueListenable<String?>? desktopWarning;
-  final Future<void> Function()? onExit;
+  final Future<void> Function()? onMinimize;
+  final Future<void> Function()? onToggleFullscreen;
+  final Future<void> Function()? onCloseToTray;
 
   @override
   State<SubDockApp> createState() => _SubDockAppState();
@@ -255,13 +259,24 @@ class _SubDockAppState extends State<SubDockApp> {
       appBar: AppBar(
         title: Text(l10n.appTitle),
         actions: [
-          IconButton(
-            tooltip: '退出',
-            onPressed: widget.onExit == null
-                ? null
-                : () => unawaited(widget.onExit!()),
-            icon: const Icon(Icons.exit_to_app),
-          ),
+          if (widget.onMinimize != null)
+            IconButton(
+              tooltip: '最小化',
+              onPressed: () => unawaited(widget.onMinimize!()),
+              icon: const Icon(Icons.minimize),
+            ),
+          if (widget.onToggleFullscreen != null)
+            IconButton(
+              tooltip: '切换全屏',
+              onPressed: () => unawaited(widget.onToggleFullscreen!()),
+              icon: const Icon(Icons.fullscreen),
+            ),
+          if (widget.onCloseToTray != null)
+            IconButton(
+              tooltip: '关闭到托盘',
+              onPressed: () => unawaited(widget.onCloseToTray!()),
+              icon: const Icon(Icons.close),
+            ),
         ],
       ),
       body: Column(

@@ -104,6 +104,45 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets(
+    'desktop controls minimize, toggle fullscreen, and close to tray',
+    (WidgetTester tester) async {
+      late Directory temp;
+      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+      final directories = await tester.runAsync(() async {
+        temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+        return RuntimeDirectories.fromBaseDirectory(temp);
+      });
+      final coordinator = AppCoordinator(
+        runtime: _FakeBackendRuntime(),
+        environmentStore: BackendEnvStore(directories!),
+      );
+      var minimizes = 0;
+      var fullscreenToggles = 0;
+      var closesToTray = 0;
+
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+          onMinimize: () async => minimizes++,
+          onToggleFullscreen: () async => fullscreenToggles++,
+          onCloseToTray: () async => closesToTray++,
+        ),
+      );
+
+      await tester.tap(find.byTooltip('最小化'));
+      await tester.tap(find.byTooltip('切换全屏'));
+      await tester.tap(find.byTooltip('关闭到托盘'));
+
+      expect(minimizes, 1);
+      expect(fullscreenToggles, 1);
+      expect(closesToTray, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('uses a navigation bar below the 600 pixel breakpoint', (
     WidgetTester tester,
   ) async {

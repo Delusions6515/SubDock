@@ -58,6 +58,14 @@ class DesktopLifecycle with WindowListener, TrayListener {
     }
   }
 
+  Future<void> minimize() => windowManager.minimize();
+
+  Future<void> toggleFullscreen() async {
+    await windowManager.setFullScreen(!await windowManager.isFullScreen());
+  }
+
+  Future<void> closeToTray() => _closeWindow();
+
   @override
   void onWindowClose() => unawaited(_closeWindow());
 

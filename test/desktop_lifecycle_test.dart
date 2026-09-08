@@ -47,4 +47,33 @@ void main() {
     expect(windowCalls.single.method, 'setPreventClose');
     expect(windowCalls.single.arguments, {'isPreventClose': true});
   });
+
+  test(
+    'forwards minimize and fullscreen controls to the desktop window',
+    () async {
+      final windowCalls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const windowChannel = MethodChannel('window_manager');
+      messenger.setMockMethodCallHandler(windowChannel, (call) async {
+        windowCalls.add(call);
+        if (call.method == 'isFullScreen') return false;
+        return true;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(windowChannel, null),
+      );
+      final lifecycle = DesktopLifecycle(onExit: () async {});
+
+      await lifecycle.minimize();
+      await lifecycle.toggleFullscreen();
+
+      expect(windowCalls.map((call) => call.method), [
+        'minimize',
+        'isFullScreen',
+        'setFullScreen',
+      ]);
+      expect(windowCalls.last.arguments, {'isFullScreen': true});
+    },
+  );
 }
