@@ -30,7 +30,11 @@ class GithubRelease {
   );
 }
 
-class GithubReleaseClient {
+abstract class GithubReleaseSource {
+  Future<GithubRelease> latest(String repository);
+}
+
+class GithubReleaseClient implements GithubReleaseSource {
   GithubReleaseClient({HttpClient? httpClient, Uri? apiBase})
     : _httpClient = httpClient ?? HttpClient(),
       _apiBase = apiBase ?? Uri.parse('https://api.github.com/');
@@ -43,6 +47,7 @@ class GithubReleaseClient {
   final HttpClient _httpClient;
   final Uri _apiBase;
 
+  @override
   Future<GithubRelease> latest(String repository) async {
     if (!_repositoryPattern.hasMatch(repository)) {
       throw ArgumentError.value(repository, 'repository');
