@@ -13,7 +13,10 @@ import 'runtime/runtime_directories.dart';
 import 'settings/backend_env_store.dart';
 import 'update/component_metadata_store.dart';
 import 'update/component_recovery.dart';
+import 'update/component_resource_resolver.dart';
+import 'update/component_update_service.dart';
 import 'update/data_backup_store.dart';
+import 'update/github_release_client.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,10 +44,28 @@ Future<void> main() async {
     startupBlocker = '组件更新恢复失败：$error';
   }
   final runtime = DesktopBackendRuntime(directories: directories);
+  final metadataStore = ComponentMetadataStore(directories.components);
+  final dataBackups = DataBackupStore(
+    backupsDirectory: directories.backups,
+    stagingDirectory: directories.staging,
+  );
+  final resources = ComponentResourceResolver(
+    bundleDirectory: File(Platform.resolvedExecutable).parent,
+    componentsDirectory: directories.components,
+    metadataStore: metadataStore,
+  );
   final coordinator = AppCoordinator(
     runtime: runtime,
     environmentStore: BackendEnvStore(directories),
     startupBlocker: startupBlocker,
+    componentUpdates: ComponentUpdateService(
+      runtime: runtime,
+      directories: directories,
+      metadataStore: metadataStore,
+      resources: resources,
+      releases: GithubReleaseClient(),
+      backups: dataBackups,
+    ),
   );
   try {
     await coordinator.loadEnvironment();

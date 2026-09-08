@@ -50,6 +50,7 @@ class BackendComponentUpdater {
 
     String? backupId;
     var pendingSaved = false;
+    var runtimeStopped = false;
     try {
       await staged.create(recursive: true);
       await restrictDirectoryToCurrentUser(staged);
@@ -66,6 +67,8 @@ class BackendComponentUpdater {
         File.fromUri(staged.uri.resolve('runtime-manifest.json')),
       );
 
+      await runtime.stop();
+      runtimeStopped = true;
       backupId = await backups.create(directories.data);
       await candidate.parent.create(recursive: true);
       await restrictDirectoryToCurrentUser(candidate.parent);
@@ -84,6 +87,7 @@ class BackendComponentUpdater {
       );
       pendingSaved = true;
       await runtime.restart();
+      runtimeStopped = false;
       if (!await runtime.isHealthy()) {
         throw StateError('Updated Backend did not become healthy');
       }
@@ -96,7 +100,11 @@ class BackendComponentUpdater {
         ),
       );
     } catch (_) {
-      if (pendingSaved) await _rollback(prior, backupId!);
+      if (pendingSaved) {
+        await _rollback(prior, backupId!);
+      } else if (runtimeStopped) {
+        await runtime.start();
+      }
       rethrow;
     } finally {
       if (await staged.exists()) await staged.delete(recursive: true);

@@ -52,6 +52,7 @@ void main() {
 
       await updater.update(_release('2.39.0'));
 
+      expect(runtime.stops, 1);
       expect(runtime.restarts, 1);
       expect(
         await metadata.load(ComponentKind.backend, baseline: 'ignored'),
@@ -111,6 +112,7 @@ void main() {
 
       await expectLater(updater.update(_release('2.39.0')), throwsStateError);
 
+      expect(runtime.stops, 1);
       expect(runtime.restarts, 2);
       expect(
         await File('${directories.data.path}/settings.json').readAsString(),
@@ -160,6 +162,7 @@ class _FakeRuntime implements BackendRuntime {
 
   final bool healthy;
   var restarts = 0;
+  var stops = 0;
   @override
   RuntimeState get currentState =>
       RuntimeState(status: RuntimeStatus.stopped, changedAt: DateTime.now());
@@ -182,7 +185,7 @@ class _FakeRuntime implements BackendRuntime {
   @override
   Future<void> start() async {}
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
 }
 
 Future<void> _write(Directory root, String path, String value) async {

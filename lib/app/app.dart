@@ -11,6 +11,9 @@ import 'package:webview_all/webview_all.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../runtime/backend_runtime.dart';
 import '../settings/backend_env.dart';
+import '../update/component_metadata_store.dart';
+import '../update/component_update_checker.dart';
+import '../update/component_update_service.dart';
 import 'app_coordinator.dart';
 
 const navigationBreakpoint = 600.0;
@@ -233,6 +236,7 @@ class _SubDockAppState extends State<SubDockApp> {
       _LogsPage(logs: _logs),
       _SettingsPage(
         environment: widget.coordinator.environment,
+        coordinator: widget.coordinator,
         onSave: _saveEnvironment,
         onRestart: () => _run(widget.coordinator.restart),
       ),
@@ -658,11 +662,13 @@ class _LogsPage extends StatelessWidget {
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.environment,
+    required this.coordinator,
     required this.onSave,
     required this.onRestart,
   });
 
   final BackendEnvDocument environment;
+  final AppCoordinator coordinator;
   final Future<void> Function(BackendEnvDocument document) onSave;
   final VoidCallback onRestart;
 
@@ -679,6 +685,10 @@ class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _cors;
   var _updating = false;
   var _dirty = false;
+  final _componentUpdates = <ComponentKind, ComponentUpdate>{};
+  final _componentStatuses = <ComponentKind, ComponentVersionStatus>{};
+  final _componentErrors = <ComponentKind, String>{};
+  final _componentBusy = <ComponentKind>{};
 
   @override
   void initState() {
@@ -690,6 +700,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     _path = TextEditingController();
     _cors = TextEditingController();
     _syncControllers();
+    unawaited(_loadComponentStatuses());
   }
 
   @override
@@ -791,6 +802,84 @@ class _SettingsPageState extends State<_SettingsPage> {
       ) ??
       false;
 
+  Future<void> _checkComponent(ComponentKind kind) async {
+    setState(() {
+      _componentBusy.add(kind);
+      _componentErrors.remove(kind);
+    });
+    try {
+      final update = await widget.coordinator.checkComponent(kind);
+      if (mounted) setState(() => _componentUpdates[kind] = update);
+    } catch (error) {
+      if (mounted) setState(() => _componentErrors[kind] = '$error');
+    } finally {
+      if (mounted) setState(() => _componentBusy.remove(kind));
+    }
+  }
+
+  Future<void> _loadComponentStatuses() async {
+    for (final kind in ComponentKind.values) {
+      try {
+        final status = await widget.coordinator.componentStatus(kind);
+        if (mounted) setState(() => _componentStatuses[kind] = status);
+      } catch (_) {
+        // The check button surfaces platform or resource errors explicitly.
+      }
+    }
+  }
+
+  Future<void> _applyComponent(ComponentUpdate update) async {
+    final kind = update.kind;
+    setState(() {
+      _componentBusy.add(kind);
+      _componentErrors.remove(kind);
+    });
+    try {
+      await widget.coordinator.updateComponent(update);
+      if (mounted) {
+        setState(() {
+          _componentUpdates.remove(kind);
+          _componentStatuses[kind] = ComponentVersionStatus(
+            current: update.availableVersion,
+            previous: update.currentVersion,
+          );
+          _componentErrors[kind] = '已更新到 ${update.availableVersion}';
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _componentErrors[kind] = '$error');
+    } finally {
+      if (mounted) setState(() => _componentBusy.remove(kind));
+    }
+  }
+
+  Future<void> _rollbackComponent(ComponentKind kind) async {
+    setState(() {
+      _componentBusy.add(kind);
+      _componentErrors.remove(kind);
+    });
+    try {
+      await widget.coordinator.rollbackComponent(kind);
+      if (mounted) {
+        setState(() {
+          _componentUpdates.remove(kind);
+          final previous = _componentStatuses[kind]?.current;
+          if (previous != null) {
+            _componentStatuses[kind] = ComponentVersionStatus(
+              current: _componentStatuses[kind]?.previous ?? '安装包版本',
+              previous: previous,
+            );
+          }
+          _componentErrors[kind] = '已回滚到上一版本';
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _componentErrors[kind] = '$error');
+    } finally {
+      if (mounted) setState(() => _componentBusy.remove(kind));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final issues = BackendEnvPolicy.validate(_document);
@@ -858,26 +947,103 @@ class _SettingsPageState extends State<_SettingsPage> {
           ],
         ),
         const SizedBox(height: 24),
-        const _ComponentCard(name: 'Backend'),
-        const _ComponentCard(name: 'Frontend'),
+        for (final kind in ComponentKind.values)
+          _ComponentCard(
+            kind: kind,
+            status: _componentStatuses[kind],
+            update: _componentUpdates[kind],
+            error: _componentErrors[kind],
+            busy: _componentBusy.contains(kind),
+            onCheck: () => _checkComponent(kind),
+            onUpdate: _componentUpdates[kind] == null
+                ? null
+                : () => _applyComponent(_componentUpdates[kind]!),
+            onRollback: () => _rollbackComponent(kind),
+          ),
       ],
     );
   }
 }
 
 class _ComponentCard extends StatelessWidget {
-  const _ComponentCard({required this.name});
+  const _ComponentCard({
+    required this.kind,
+    required this.status,
+    required this.update,
+    required this.error,
+    required this.busy,
+    required this.onCheck,
+    required this.onUpdate,
+    required this.onRollback,
+  });
 
-  final String name;
+  final ComponentKind kind;
+  final ComponentVersionStatus? status;
+  final ComponentUpdate? update;
+  final String? error;
+  final bool busy;
+  final VoidCallback onCheck;
+  final VoidCallback? onUpdate;
+  final VoidCallback onRollback;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      title: Text(name),
-      subtitle: const Text('手动更新与回滚将在组件更新完成后提供。'),
-      trailing: OutlinedButton(onPressed: null, child: const Text('检查更新')),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final name = kind == ComponentKind.backend ? 'Backend' : 'Frontend';
+    final text = update == null
+        ? status == null
+              ? '正在读取已安装版本…'
+              : '当前 ${status!.current}，上一版 ${status!.previous ?? '-'}'
+        : update!.isAvailable
+        ? '当前 ${update!.currentVersion}，可更新到 ${update!.availableVersion}，上一版 ${status?.previous ?? '-'}'
+        : '当前 ${update!.currentVersion} 已是最新版本，上一版 ${status?.previous ?? '-'}';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(text),
+            if (error != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: busy ? null : onCheck,
+                  child: const Text('检查更新'),
+                ),
+                FilledButton(
+                  onPressed: busy || update?.isAvailable != true
+                      ? null
+                      : onUpdate,
+                  child: const Text('更新'),
+                ),
+                TextButton(
+                  onPressed: busy ? null : onRollback,
+                  child: const Text('回滚'),
+                ),
+                if (busy)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _InfoRow extends StatelessWidget {

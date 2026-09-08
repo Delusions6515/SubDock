@@ -30,8 +30,11 @@ class ComponentResourceResolver {
   final Directory componentsDirectory;
   final ComponentMetadataStore metadataStore;
 
+  Future<PackagedComponentVersions> packagedVersions() =>
+      PackagedComponentVersions.read(_dataDirectory);
+
   Future<ComponentResources> resolve() async {
-    final packaged = await PackagedComponentVersions.read(_dataDirectory);
+    final packaged = await packagedVersions();
     final metadata = await Future.wait([
       metadataStore.load(ComponentKind.backend, baseline: packaged.backend),
       metadataStore.load(ComponentKind.frontend, baseline: packaged.frontend),

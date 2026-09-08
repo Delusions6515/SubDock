@@ -7,6 +7,10 @@ import 'package:sub_dock/runtime/backend_runtime.dart';
 import 'package:sub_dock/runtime/runtime_directories.dart';
 import 'package:sub_dock/settings/backend_env.dart';
 import 'package:sub_dock/settings/backend_env_store.dart';
+import 'package:sub_dock/update/component_metadata_store.dart';
+import 'package:sub_dock/update/component_update_checker.dart';
+import 'package:sub_dock/update/component_update_service.dart';
+import 'package:sub_dock/update/github_release_client.dart';
 
 void main() {
   test('serializes environment activation before a backend start', () async {
@@ -76,6 +80,52 @@ void main() {
       expect(runtime.operations, isEmpty);
     },
   );
+
+  test('serializes a component update with runtime actions', () async {
+    final temp = await Directory.systemTemp.createTemp('sub_dock_coordinator_');
+    addTearDown(() => temp.delete(recursive: true));
+    final runtime = _FakeRuntime();
+    final updates = _FakeUpdates(runtime.operations);
+    final coordinator = AppCoordinator(
+      runtime: runtime,
+      environmentStore: BackendEnvStore(
+        await RuntimeDirectories.fromBaseDirectory(temp),
+      ),
+      componentUpdates: updates,
+    );
+
+    await Future.wait([
+      coordinator.updateComponent(updates.availableUpdate),
+      coordinator.stop(),
+    ]);
+
+    expect(runtime.operations, ['update', 'stop']);
+  });
+}
+
+class _FakeUpdates implements ComponentUpdateOperations {
+  _FakeUpdates(this.operations);
+
+  final List<String> operations;
+  final availableUpdate = ComponentUpdate(
+    kind: ComponentKind.frontend,
+    currentVersion: '2.31.3',
+    availableVersion: '2.32.0',
+    release: const GithubRelease(version: '2.32.0', assets: []),
+  );
+
+  @override
+  Future<ComponentVersionStatus> status(ComponentKind kind) async =>
+      const ComponentVersionStatus(current: '2.31.3');
+
+  @override
+  Future<ComponentUpdate> check(ComponentKind kind) async => availableUpdate;
+
+  @override
+  Future<void> rollback(ComponentKind kind) async => operations.add('rollback');
+
+  @override
+  Future<void> update(ComponentUpdate update) async => operations.add('update');
 }
 
 class _FakeRuntime implements BackendRuntime {
