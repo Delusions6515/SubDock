@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sub_dock/runtime/backend_runtime.dart';
 import 'package:sub_dock/runtime/desktop_backend_runtime.dart';
 import 'package:sub_dock/runtime/runtime_directories.dart';
+import 'package:sub_dock/update/component_metadata_store.dart';
 
 void main() {
   group('DesktopBackendRuntime', () {
@@ -113,6 +114,20 @@ void main() {
         isTrue,
       );
     });
+
+    test(
+      'starts the active Backend component instead of the packaged bundle',
+      () async {
+        runtime = await _createRuntime(
+          temp,
+          activeBackendVersion: 'candidate-backend',
+        );
+
+        await runtime.start();
+
+        expect((await runtime.info()).backendVersion, 'candidate-backend');
+      },
+    );
 
     test('activates user environment on the next backend start', () async {
       final configuredPort = await _unusedPort();
@@ -226,6 +241,7 @@ Future<DesktopBackendRuntime> _createRuntime(
   String? bundledNodeVersion = '24.15.0',
   List<String> externalBinaries = const <String>[],
   int? port,
+  String? activeBackendVersion,
 }) async {
   final bundle = Directory.fromUri(temp.uri.resolve('bundle/'));
   final backend = Directory.fromUri(bundle.uri.resolve('data/backend/'));
@@ -243,6 +259,12 @@ Future<DesktopBackendRuntime> _createRuntime(
   ).writeAsString(
     '{"testedNode":"$manifestVersion","externalBinary":${jsonEncode(externalBinaries)}}',
   );
+  await File.fromUri(backend.uri.resolve('version')).writeAsString('2.38.4\n');
+  final frontend = Directory.fromUri(bundle.uri.resolve('data/frontend/'));
+  await frontend.create(recursive: true);
+  await File.fromUri(frontend.uri.resolve('index.html'))
+      .writeAsString('frontend');
+  await File.fromUri(frontend.uri.resolve('version')).writeAsString('2.31.3\n');
   if (bundledNodeVersion != null) {
     final node = File.fromUri(bundle.uri.resolve('data/runtime/node'));
     await node.parent.create(recursive: true);
@@ -251,10 +273,29 @@ Future<DesktopBackendRuntime> _createRuntime(
     );
     await Process.run('chmod', <String>['755', node.path]);
   }
+  final directories = await RuntimeDirectories.fromBaseDirectory(
+    Directory.fromUri(temp.uri.resolve('application-support/')),
+  );
+  if (activeBackendVersion != null) {
+    final candidate = Directory.fromUri(
+      directories.components.uri.resolve('backend/$activeBackendVersion/'),
+    );
+    await candidate.create(recursive: true);
+    await File.fromUri(
+      candidate.uri.resolve('sub-store.bundle.js'),
+    ).writeAsString(source.replaceAll('fixture-backend', activeBackendVersion));
+    await File.fromUri(
+      candidate.uri.resolve('runtime-manifest.json'),
+    ).writeAsString(
+      '{"testedNode":"$manifestVersion","externalBinary":${jsonEncode(externalBinaries)}}',
+    );
+    await ComponentMetadataStore(directories.components).save(
+      ComponentKind.backend,
+      ComponentMetadata(baseline: '2.38.4', active: activeBackendVersion),
+    );
+  }
   return DesktopBackendRuntime(
-    directories: await RuntimeDirectories.fromBaseDirectory(
-      Directory.fromUri(temp.uri.resolve('application-support/')),
-    ),
+    directories: directories,
     bundleDirectory: bundle,
     port: port ?? await _unusedPort(),
   );

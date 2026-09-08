@@ -5,6 +5,8 @@ import 'dart:io';
 import 'backend_runtime.dart';
 import 'runtime_directories.dart';
 import 'runtime_permissions.dart';
+import '../update/component_metadata_store.dart';
+import '../update/component_resource_resolver.dart';
 
 class DesktopRuntimeProfile {
   const DesktopRuntimeProfile._(this.executableSuffix);
@@ -24,11 +26,20 @@ class DesktopBackendRuntime implements BackendRuntime {
     required this.directories,
     Directory? bundleDirectory,
     DesktopRuntimeProfile? profile,
+    ComponentResourceResolver? componentResources,
     int port = 3001,
     Map<String, String> userEnvironment = const <String, String>{},
   }) : _bundleDirectory =
            bundleDirectory ?? File(Platform.resolvedExecutable).parent,
        _profile = profile ?? DesktopRuntimeProfile.current(),
+       _componentResources =
+           componentResources ??
+           ComponentResourceResolver(
+             bundleDirectory:
+                 bundleDirectory ?? File(Platform.resolvedExecutable).parent,
+             componentsDirectory: directories.components,
+             metadataStore: ComponentMetadataStore(directories.components),
+           ),
        _defaultPort = port,
        _userEnvironment = Map<String, String>.of(userEnvironment);
 
@@ -43,6 +54,7 @@ class DesktopBackendRuntime implements BackendRuntime {
   final RuntimeDirectories directories;
   final Directory _bundleDirectory;
   final DesktopRuntimeProfile _profile;
+  final ComponentResourceResolver _componentResources;
   final int _defaultPort;
   Map<String, String> _userEnvironment;
   final _logs = StreamController<RuntimeLog>.broadcast(sync: true);
@@ -159,10 +171,13 @@ class DesktopBackendRuntime implements BackendRuntime {
     _emit(RuntimeStatus.starting);
     try {
       await _verifyPortAvailable();
-      final manifest = await _readRuntimeManifest();
+      final resources = await _componentResources.resolve();
+      final manifest = await _readRuntimeManifest(resources.backend);
       final node = await _resolveNode(manifest.testedNode);
       await _verifyExternalBinaries(manifest.externalBinaries);
-      final bundle = _backendBundle;
+      final bundle = File.fromUri(
+        resources.backend.uri.resolve('sub-store.bundle.js'),
+      );
       if (!await bundle.exists()) {
         throw StateError('Backend bundle is missing: ${bundle.path}');
       }
@@ -170,7 +185,7 @@ class DesktopBackendRuntime implements BackendRuntime {
 
       final process = await Process.start(node, [
         bundle.path,
-      ], environment: _environment());
+      ], environment: _environment(resources.frontend));
       _process = process;
       _capture(process.stdout, RuntimeLogSource.stdout);
       _capture(process.stderr, RuntimeLogSource.stderr);
@@ -284,8 +299,12 @@ class DesktopBackendRuntime implements BackendRuntime {
     }
   }
 
-  Future<_RuntimeManifest> _readRuntimeManifest() async {
-    final manifest = _runtimeManifest;
+  Future<_RuntimeManifest> _readRuntimeManifest(
+    Directory backendDirectory,
+  ) async {
+    final manifest = File.fromUri(
+      backendDirectory.uri.resolve('runtime-manifest.json'),
+    );
     if (!await manifest.exists()) {
       throw StateError('Runtime manifest is missing: ${manifest.path}');
     }
@@ -504,7 +523,7 @@ class DesktopBackendRuntime implements BackendRuntime {
     if (!_states.isClosed) _states.add(_currentState);
   }
 
-  Map<String, String> _environment() {
+  Map<String, String> _environment(Directory frontendDirectory) {
     final environment = Map<String, String>.of(Platform.environment);
     final pathKey = environment.keys.firstWhere(
       (key) => key.toLowerCase() == 'path',
@@ -529,9 +548,7 @@ class DesktopBackendRuntime implements BackendRuntime {
     );
     environment.addAll(<String, String>{
       'SUB_STORE_DATA_BASE_PATH': directories.data.path,
-      'SUB_STORE_FRONTEND_PATH': File.fromUri(
-        _bundleDirectory.uri.resolve('data/frontend/'),
-      ).path,
+      'SUB_STORE_FRONTEND_PATH': frontendDirectory.path,
     });
     return environment;
   }
@@ -540,14 +557,6 @@ class DesktopBackendRuntime implements BackendRuntime {
       _userEnvironment[key] ?? Platform.environment[key];
 
   Uri _apiUrl() => endpoint.replace(path: 'api/utils/env');
-
-  File get _backendBundle => File.fromUri(
-    _bundleDirectory.uri.resolve('data/backend/sub-store.bundle.js'),
-  );
-
-  File get _runtimeManifest => File.fromUri(
-    _bundleDirectory.uri.resolve('data/backend/runtime-manifest.json'),
-  );
 
   File get _runtimeNode => File.fromUri(
     _bundleDirectory.uri.resolve('data/runtime/${_profile.nodeFileName}'),
