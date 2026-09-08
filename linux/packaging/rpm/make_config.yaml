@@ -1,0 +1,18 @@
+display_name: SubDock
+icon: macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png
+summary: Native desktop manager for Sub-Store
+group: Applications/Internet
+vendor: Delusions6515
+packager: Delusions6515
+packager_email: 213381333+Delusions6515@users.noreply.github.com
+license: GPL-3.0-only
+url: https://github.com/Delusions6515/SubDock
+generic_name: Sub-Store Desktop Manager
+categories:
+  - Network
+  - Utility
+keywords:
+  - Sub-Store
+  - proxy
+  - subscription
+startup_notify: true

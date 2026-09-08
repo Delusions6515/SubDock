@@ -1,0 +1,11 @@
+app_id: 70768798-8E40-4D15-9951-86F9F3138CF9
+publisher: Delusions6515
+publisher_url: https://github.com/Delusions6515/SubDock
+display_name: SubDock
+setup_icon_file: windows/runner/resources/app_icon.ico
+create_desktop_icon: true
+locales:
+  - en
+  - zh
+architectures_allowed: x64compatible
+architectures_install_in_64bit_mode: x64compatible
