@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import 'runtime_permissions.dart';
+
 class RuntimeDirectories {
   const RuntimeDirectories._({
     required this.data,
@@ -40,6 +42,14 @@ class RuntimeDirectories {
       config.create(recursive: true),
       components.create(recursive: true),
       staging.create(recursive: true),
+    ]);
+    await Future.wait([
+      restrictDirectoryToCurrentUser(data),
+      restrictDirectoryToCurrentUser(logs),
+      restrictDirectoryToCurrentUser(backups),
+      restrictDirectoryToCurrentUser(config),
+      restrictDirectoryToCurrentUser(components),
+      restrictDirectoryToCurrentUser(staging),
     ]);
     return RuntimeDirectories._(
       data: data,
