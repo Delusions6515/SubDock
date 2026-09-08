@@ -57,6 +57,26 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+set(SUBDOCK_PROJECT_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
+set(SUBDOCK_RESOURCES_DIR "${SUBDOCK_PROJECT_DIR}/.subdock")
+set(SUBDOCK_BACKEND_DIR "${SUBDOCK_RESOURCES_DIR}/backend")
+set(SUBDOCK_FRONTEND_DIR "${SUBDOCK_RESOURCES_DIR}/frontend")
+set(SUBDOCK_RUNTIME_DIR "${SUBDOCK_RESOURCES_DIR}/runtime/windows-x64")
+foreach(backend_file sub-store.bundle.js runtime-manifest.json version)
+  if(NOT EXISTS "${SUBDOCK_BACKEND_DIR}/${backend_file}")
+    message(FATAL_ERROR "Missing ${backend_file}. Run tool/prepare_backend.sh before building Windows.")
+  endif()
+endforeach()
+foreach(runtime_file node.exe bin/shoutrrr.exe)
+  if(NOT EXISTS "${SUBDOCK_RUNTIME_DIR}/${runtime_file}")
+    message(FATAL_ERROR
+      "Missing ${runtime_file}. Run tool/prepare_runtime.sh windows-x64 before building Windows.")
+  endif()
+endforeach()
+if(NOT EXISTS "${SUBDOCK_FRONTEND_DIR}/index.html")
+  message(FATAL_ERROR "Missing frontend. Run tool/prepare_frontend.sh before building Windows.")
+endif()
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
@@ -71,6 +91,27 @@ endif()
 
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
+
+install(PROGRAMS
+  "${SUBDOCK_RUNTIME_DIR}/node.exe"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/runtime"
+  COMPONENT Runtime)
+
+install(PROGRAMS
+  "${SUBDOCK_RUNTIME_DIR}/bin/shoutrrr.exe"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/runtime/bin"
+  COMPONENT Runtime)
+
+install(FILES
+  "${SUBDOCK_BACKEND_DIR}/sub-store.bundle.js"
+  "${SUBDOCK_BACKEND_DIR}/runtime-manifest.json"
+  "${SUBDOCK_BACKEND_DIR}/version"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/backend"
+  COMPONENT Runtime)
+
+install(DIRECTORY "${SUBDOCK_FRONTEND_DIR}/"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/frontend"
+  COMPONENT Runtime)
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
