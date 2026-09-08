@@ -69,10 +69,15 @@ jobs:
           path: dist/**
           if-no-files-found: error
 
+      - name: Archive Linux bundle
+        run: |
+          tar --create --file build/linux/x64/release/linux-bundle.tar \
+            --directory build/linux/x64/release bundle
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux-bundle
-          path: build/linux/x64/release/bundle
+          path: build/linux/x64/release/linux-bundle.tar
           if-no-files-found: error
 
 
@@ -92,6 +97,12 @@ jobs:
         with:
           name: linux-bundle
           path: build/linux/x64/release/bundle
+
+      - name: Extract Linux bundle
+        run: |
+          tar --extract \
+            --file build/linux/x64/release/bundle/linux-bundle.tar \
+            --directory build/linux/x64/release
 
       - name: Build standard Arch package
         run: tool/package_arch.sh
@@ -181,6 +192,8 @@ jobs:
           tool/prepare_runtime.sh "${{ matrix.runtime }}"
 
       - name: Build and verify app
+        env:
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: 'NO'
         run: |
           flutter pub get
           flutter build macos --release
