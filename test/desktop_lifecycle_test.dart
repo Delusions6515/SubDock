@@ -16,4 +16,9 @@ void main() {
       '/opt/subdock/data/tray_icon.ico',
     );
   });
+
+  test('does not use unsupported Linux tray tooltips', () {
+    expect(traySupportsToolTip(isLinux: true), isFalse);
+    expect(traySupportsToolTip(isLinux: false), isTrue);
+  });
 }

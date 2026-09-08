@@ -26,7 +26,9 @@ class DesktopLifecycle with WindowListener, TrayListener {
           isWindows: Platform.isWindows,
         ),
       );
-      await trayManager.setToolTip('SubDock');
+      if (traySupportsToolTip(isLinux: Platform.isLinux)) {
+        await trayManager.setToolTip('SubDock');
+      }
       await trayManager.setContextMenu(
         Menu(
           items: [
@@ -92,3 +94,5 @@ String trayIconPath({
 }) => File.fromUri(
   bundleDirectory.uri.resolve('data/tray_icon${isWindows ? '.ico' : '.png'}'),
 ).path;
+
+bool traySupportsToolTip({required bool isLinux}) => !isLinux;
