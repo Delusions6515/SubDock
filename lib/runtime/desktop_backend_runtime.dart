@@ -5,21 +5,38 @@ import 'dart:io';
 import 'backend_runtime.dart';
 import 'runtime_directories.dart';
 
+class DesktopRuntimeProfile {
+  const DesktopRuntimeProfile._(this.executableSuffix);
+
+  factory DesktopRuntimeProfile.current() =>
+      DesktopRuntimeProfile._(Platform.isWindows ? '.exe' : '');
+
+  final String executableSuffix;
+
+  String get nodeFileName => 'node$executableSuffix';
+
+  String externalBinaryFileName(String name) => '$name$executableSuffix';
+}
+
 class DesktopBackendRuntime implements BackendRuntime {
   DesktopBackendRuntime({
     required this.directories,
     Directory? bundleDirectory,
+    DesktopRuntimeProfile? profile,
     this.port = 3001,
   }) : _bundleDirectory =
-           bundleDirectory ?? File(Platform.resolvedExecutable).parent;
+           bundleDirectory ?? File(Platform.resolvedExecutable).parent,
+       _profile = profile ?? DesktopRuntimeProfile.current();
 
   static const _healthCheckInterval = Duration(seconds: 1);
   static const _healthCheckTimeout = Duration(seconds: 10);
   static const _httpRequestTimeout = Duration(seconds: 1);
   static const _stopTimeout = Duration(seconds: 5);
+  static final _binaryName = RegExp(r'^[A-Za-z0-9._-]+$');
 
   final RuntimeDirectories directories;
   final Directory _bundleDirectory;
+  final DesktopRuntimeProfile _profile;
   final int port;
   final _logs = StreamController<RuntimeLog>.broadcast(sync: true);
   final _states = StreamController<RuntimeState>.broadcast(sync: true);
@@ -35,35 +52,74 @@ class DesktopBackendRuntime implements BackendRuntime {
   Timer? _healthTimer;
   bool _stopping = false;
   bool _checkingHealth = false;
+  bool _disposed = false;
+
+  @override
+  RuntimeState get currentState => _currentState;
+
+  @override
+  Uri get endpoint => Uri(
+    scheme: 'http',
+    host: InternetAddress.loopbackIPv4.address,
+    port: port,
+  );
 
   @override
   Stream<RuntimeLog> get logs => _logs.stream;
 
   @override
-  Stream<RuntimeState> get state => _states.stream;
+  Stream<RuntimeState> get state => Stream<RuntimeState>.multi((controller) {
+    controller.add(_currentState);
+    final subscription = _states.stream.listen(
+      controller.add,
+      onError: controller.addError,
+      onDone: controller.close,
+    );
+    controller.onCancel = subscription.cancel;
+  }, isBroadcast: true);
 
   @override
-  Future<void> start() => _serialize(_start);
+  Future<void> start() => _serialize(() async {
+    _ensureActive();
+    await _start();
+  });
 
   @override
-  Future<void> stop() => _serialize(_stop);
+  Future<void> stop() => _serialize(() async {
+    _ensureActive();
+    await _stop();
+  });
 
   @override
   Future<void> restart() => _serialize(() async {
+    _ensureActive();
     await _stop();
     await _start();
   });
 
   @override
-  Future<bool> isHealthy() async => await _requestInfo() != null;
+  Future<bool> isHealthy() async {
+    _ensureActive();
+    return _process != null && await _requestInfo() != null;
+  }
 
   @override
   Future<BackendInfo> info() async {
+    _ensureActive();
+    if (_process == null) throw StateError('Backend is not running');
     final info = await _requestInfo();
     if (info == null) {
-      throw StateError('Backend API is unavailable at ${_apiUrl()}');
+      throw StateError('Backend API is unavailable at $endpoint');
     }
     return info;
+  }
+
+  @override
+  Future<void> dispose() {
+    if (_disposed) return Future<void>.value();
+    final next = _operation.then((_) => _dispose());
+    _operation = next.catchError((Object _) {});
+    return next;
   }
 
   Future<void> _serialize(Future<void> Function() operation) {
@@ -73,16 +129,18 @@ class DesktopBackendRuntime implements BackendRuntime {
   }
 
   Future<void> _start() async {
-    if (_process != null ||
-        _currentState.status == RuntimeStatus.starting ||
-        _currentState.status == RuntimeStatus.running) {
-      return;
+    if (_process != null) {
+      if (_currentState.status == RuntimeStatus.running) return;
+      throw StateError('Backend process is already active');
     }
 
     _stopping = false;
     _emit(RuntimeStatus.starting);
     try {
-      final node = await _resolveNode();
+      await _verifyPortAvailable();
+      final manifest = await _readRuntimeManifest();
+      final node = await _resolveNode(manifest.testedNode);
+      await _verifyExternalBinaries(manifest.externalBinaries);
       final bundle = _backendBundle;
       if (!await bundle.exists()) {
         throw StateError('Backend bundle is missing: ${bundle.path}');
@@ -90,16 +148,9 @@ class DesktopBackendRuntime implements BackendRuntime {
       _logSink = File.fromUri(directories.logs.uri.resolve('backend.log'))
           .openWrite(mode: FileMode.append);
 
-      final process = await Process.start(
-        node,
-        [bundle.path],
-        environment: <String, String>{
-          ...Platform.environment,
-          'SUB_STORE_BACKEND_API_HOST': InternetAddress.loopbackIPv4.address,
-          'SUB_STORE_BACKEND_API_PORT': '$port',
-          'SUB_STORE_DATA_BASE_PATH': directories.data.path,
-        },
-      );
+      final process = await Process.start(node, [
+        bundle.path,
+      ], environment: _environment());
       _process = process;
       _capture(process.stdout, RuntimeLogSource.stdout);
       _capture(process.stderr, RuntimeLogSource.stderr);
@@ -109,17 +160,29 @@ class DesktopBackendRuntime implements BackendRuntime {
         if (identical(_process, process)) {
           await _terminate(process);
           _process = null;
-          _emit(RuntimeStatus.crashed, 'Backend did not become healthy');
         }
-        return;
+        throw StateError('Backend did not become healthy');
       }
 
-      if (!identical(_process, process)) return;
+      if (!identical(_process, process)) {
+        throw StateError('Backend exited during startup');
+      }
       _emit(RuntimeStatus.running);
       _startHealthMonitor();
-    } catch (error) {
+    } catch (error, stackTrace) {
+      final process = _process;
+      if (process != null) {
+        try {
+          await _terminate(process);
+        } on Object {
+          // The failure below is the startup error that callers can act on.
+        }
+        if (identical(_process, process)) _process = null;
+      }
+      _closeHttpClient();
       await _closeLogSink();
       _emit(RuntimeStatus.crashed, '$error');
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -138,26 +201,70 @@ class DesktopBackendRuntime implements BackendRuntime {
 
     _stopping = true;
     _emit(RuntimeStatus.stopping);
-    await _terminate(process);
+    try {
+      await _terminate(process);
+      _closeHttpClient();
+      await _closeLogSink();
+      if (identical(_process, process)) {
+        _process = null;
+        _emit(RuntimeStatus.stopped);
+      }
+    } catch (error, stackTrace) {
+      _stopping = false;
+      _emit(RuntimeStatus.crashed, 'Unable to stop backend: $error');
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
+  Future<void> _dispose() async {
+    Object? failure;
+    StackTrace? failureStackTrace;
+    try {
+      await _stop();
+    } catch (error, stackTrace) {
+      failure = error;
+      failureStackTrace = stackTrace;
+    }
+    _healthTimer?.cancel();
+    _healthTimer = null;
     _closeHttpClient();
     await _closeLogSink();
-    if (identical(_process, process)) {
-      _process = null;
-      _emit(RuntimeStatus.stopped);
+    _disposed = true;
+    await Future.wait(<Future<void>>[_logs.close(), _states.close()]);
+    if (failure != null) {
+      Error.throwWithStackTrace(failure, failureStackTrace!);
+    }
+  }
+
+  Future<void> _verifyPortAvailable() async {
+    ServerSocket? socket;
+    try {
+      socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
+    } on SocketException {
+      throw StateError('Backend port $port is occupied by an unknown process');
+    } finally {
+      await socket?.close();
     }
   }
 
   Future<void> _terminate(Process process) async {
-    process.kill(ProcessSignal.sigterm);
+    if (!process.kill()) {
+      throw StateError('Backend process could not be terminated');
+    }
     try {
       await process.exitCode.timeout(_stopTimeout);
     } on TimeoutException {
-      process.kill(ProcessSignal.sigkill);
-      await process.exitCode;
+      final killed = Platform.isWindows
+          ? process.kill()
+          : process.kill(ProcessSignal.sigkill);
+      if (!killed) {
+        throw StateError('Backend process could not be force-terminated');
+      }
+      await process.exitCode.timeout(_stopTimeout);
     }
   }
 
-  Future<String> _resolveNode() async {
+  Future<_RuntimeManifest> _readRuntimeManifest() async {
     final manifest = _runtimeManifest;
     if (!await manifest.exists()) {
       throw StateError('Runtime manifest is missing: ${manifest.path}');
@@ -166,21 +273,52 @@ class DesktopBackendRuntime implements BackendRuntime {
     if (decoded is! Map<String, dynamic> || decoded['testedNode'] is! String) {
       throw StateError('Runtime manifest has no testedNode version');
     }
-    final expectedMajor = _majorVersion(decoded['testedNode'] as String);
+    final binaries = decoded['externalBinary'] ?? const <Object>[];
+    if (binaries is! List || binaries.any((item) => item is! String)) {
+      throw StateError('Runtime manifest has invalid external binaries');
+    }
+    return _RuntimeManifest(
+      testedNode: decoded['testedNode'] as String,
+      externalBinaries: binaries.cast<String>(),
+    );
+  }
+
+  Future<String> _resolveNode(String testedNode) async {
+    final expectedMajor = _majorVersion(testedNode);
     if (expectedMajor == null) {
       throw StateError('Runtime manifest has an invalid testedNode version');
     }
-
-    if (await _hasMajorVersion('node', expectedMajor)) return 'node';
-
-    final fallback = File.fromUri(
-      _bundleDirectory.uri.resolve('data/runtime/linux-x64/bin/node'),
-    );
-    if (await fallback.exists() &&
-        await _hasMajorVersion(fallback.path, expectedMajor)) {
-      return fallback.path;
+    final node = _runtimeNode;
+    if (!await node.exists()) {
+      throw StateError('Packaged Node.js runtime is missing: ${node.path}');
     }
-    throw StateError('No Node.js $expectedMajor runtime is available');
+    if (!await _hasMajorVersion(node.path, expectedMajor)) {
+      throw StateError('Packaged Node.js is not major version $expectedMajor');
+    }
+    return node.path;
+  }
+
+  Future<void> _verifyExternalBinaries(List<String> binaries) async {
+    for (final binary in binaries) {
+      if (!_binaryName.hasMatch(binary)) {
+        throw StateError(
+          'Runtime manifest has an invalid binary name: $binary',
+        );
+      }
+      final file = File.fromUri(
+        _bundleDirectory.uri.resolve(
+          'data/runtime/bin/${_profile.externalBinaryFileName(binary)}',
+        ),
+      );
+      if (!await file.exists()) {
+        throw StateError('Packaged external binary is missing: ${file.path}');
+      }
+      if (!Platform.isWindows && ((await file.stat()).mode & 0x49) == 0) {
+        throw StateError(
+          'Packaged external binary is not executable: ${file.path}',
+        );
+      }
+    }
   }
 
   Future<bool> _hasMajorVersion(String executable, int expectedMajor) async {
@@ -275,7 +413,7 @@ class DesktopBackendRuntime implements BackendRuntime {
         source: source,
         message: line,
       );
-      _logs.add(log);
+      if (!_logs.isClosed) _logs.add(log);
       _logSink?.writeln(
         '${log.timestamp.toIso8601String()} [${log.source.name}] ${log.message}',
       );
@@ -302,15 +440,29 @@ class DesktopBackendRuntime implements BackendRuntime {
       changedAt: DateTime.now(),
       message: message,
     );
-    _states.add(_currentState);
+    if (!_states.isClosed) _states.add(_currentState);
   }
 
-  Uri _apiUrl() => Uri(
-    scheme: 'http',
-    host: InternetAddress.loopbackIPv4.address,
-    port: port,
-    path: 'api/utils/env',
-  );
+  Map<String, String> _environment() {
+    final environment = Map<String, String>.of(Platform.environment);
+    final pathKey = environment.keys.firstWhere(
+      (key) => key.toLowerCase() == 'path',
+      orElse: () => 'PATH',
+    );
+    final originalPath = environment[pathKey] ?? '';
+    final binaryPath = _runtimeBin.path;
+    environment[pathKey] = originalPath.isEmpty
+        ? binaryPath
+        : '$binaryPath${Platform.pathSeparator}$originalPath';
+    environment.addAll(<String, String>{
+      'SUB_STORE_BACKEND_API_HOST': InternetAddress.loopbackIPv4.address,
+      'SUB_STORE_BACKEND_API_PORT': '$port',
+      'SUB_STORE_DATA_BASE_PATH': directories.data.path,
+    });
+    return environment;
+  }
+
+  Uri _apiUrl() => endpoint.replace(path: 'api/utils/env');
 
   File get _backendBundle => File.fromUri(
     _bundleDirectory.uri.resolve('data/backend/sub-store.bundle.js'),
@@ -319,6 +471,17 @@ class DesktopBackendRuntime implements BackendRuntime {
   File get _runtimeManifest => File.fromUri(
     _bundleDirectory.uri.resolve('data/backend/runtime-manifest.json'),
   );
+
+  File get _runtimeNode => File.fromUri(
+    _bundleDirectory.uri.resolve('data/runtime/${_profile.nodeFileName}'),
+  );
+
+  Directory get _runtimeBin =>
+      Directory.fromUri(_bundleDirectory.uri.resolve('data/runtime/bin/'));
+
+  void _ensureActive() {
+    if (_disposed) throw StateError('Backend runtime has been disposed');
+  }
 
   void _closeHttpClient() {
     _httpClient?.close(force: true);
@@ -335,4 +498,14 @@ class DesktopBackendRuntime implements BackendRuntime {
       // Logging failures must not interrupt backend lifecycle handling.
     }
   }
+}
+
+class _RuntimeManifest {
+  const _RuntimeManifest({
+    required this.testedNode,
+    required this.externalBinaries,
+  });
+
+  final String testedNode;
+  final List<String> externalBinaries;
 }

@@ -56,6 +56,15 @@ class _FakeBackendRuntime implements BackendRuntime {
   var stops = 0;
 
   @override
+  RuntimeState get currentState => RuntimeState(
+    status: starts > stops ? RuntimeStatus.running : RuntimeStatus.stopped,
+    changedAt: DateTime.now(),
+  );
+
+  @override
+  Uri get endpoint => Uri.parse('http://127.0.0.1:3001');
+
+  @override
   Stream<RuntimeLog> get logs => _logs.stream;
 
   @override
@@ -90,8 +99,9 @@ class _FakeBackendRuntime implements BackendRuntime {
     );
   }
 
-  void dispose() {
-    _logs.close();
-    _states.close();
+  @override
+  Future<void> dispose() async {
+    await _logs.close();
+    await _states.close();
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -13,11 +14,11 @@ void main() {
 
     setUp(() async {
       temp = await Directory.systemTemp.createTemp('sub_dock_runtime_');
-      runtime = await _createRuntime(temp);
+      runtime = await _createRuntime(temp, bundledNodeVersion: '24.15.0');
     });
 
     tearDown(() async {
-      await runtime.stop();
+      await runtime.dispose();
       await temp.delete(recursive: true);
     });
 
@@ -58,6 +59,8 @@ void main() {
       await runtime.stop();
 
       expect(states.last.status, RuntimeStatus.stopped);
+      expect(runtime.currentState.status, RuntimeStatus.stopped);
+      expect(runtime.endpoint, Uri.parse('http://127.0.0.1:${runtime.port}'));
     });
 
     test('reports an unexpected child exit as crashed', () async {
@@ -66,12 +69,12 @@ void main() {
       final subscription = runtime.state.listen(states.add);
       addTearDown(subscription.cancel);
 
-      await runtime.start();
+      await expectLater(runtime.start(), throwsStateError);
       await _waitFor(
         () => states.any((state) => state.status == RuntimeStatus.crashed),
       );
 
-      expect(states.last.status, RuntimeStatus.crashed);
+      expect(runtime.currentState.status, RuntimeStatus.crashed);
     });
 
     test(
@@ -91,26 +94,62 @@ void main() {
       },
     );
 
-    test(
-      'uses the bundled Node fallback for a system-version mismatch',
-      () async {
-        runtime = await _createRuntime(
-          temp,
-          manifestVersion: '25.0.0',
-          bundledNodeVersion: '25.0.0',
-        );
+    test('uses the packaged Node runtime', () async {
+      runtime = await _createRuntime(
+        temp,
+        manifestVersion: '25.0.0',
+        bundledNodeVersion: '25.0.0',
+      );
 
-        await runtime.start();
+      await runtime.start();
 
-        expect(await runtime.isHealthy(), isTrue);
-        expect(
-          await File.fromUri(
-            temp.uri.resolve('bundle/data/runtime/linux-x64/bin/selected'),
-          ).exists(),
-          isTrue,
-        );
-      },
-    );
+      expect(await runtime.isHealthy(), isTrue);
+      expect(
+        await File.fromUri(temp.uri.resolve('bundle/data/runtime/selected'))
+            .exists(),
+        isTrue,
+      );
+    });
+
+    test('rejects a port held by an unknown process', () async {
+      final blockedPort = await _unusedPort();
+      final blocker = await ServerSocket.bind(
+        InternetAddress.loopbackIPv4,
+        blockedPort,
+      );
+      addTearDown(blocker.close);
+      runtime = await _createRuntime(temp, port: blockedPort);
+
+      await expectLater(runtime.start(), throwsStateError);
+
+      expect(runtime.currentState.status, RuntimeStatus.crashed);
+    });
+
+    test('rejects a missing manifest external binary', () async {
+      runtime = await _createRuntime(
+        temp,
+        externalBinaries: const <String>['shoutrrr'],
+        bundledNodeVersion: '24.15.0',
+      );
+
+      await expectLater(runtime.start(), throwsStateError);
+
+      expect(runtime.currentState.status, RuntimeStatus.crashed);
+    });
+
+    test('disposes lifecycle resources', () async {
+      var stateDone = false;
+      final subscription = runtime.state.listen(
+        null,
+        onDone: () => stateDone = true,
+      );
+      addTearDown(subscription.cancel);
+
+      await runtime.dispose();
+      await _waitFor(() => stateDone);
+
+      expect(stateDone, isTrue);
+    });
 
     test('restarts a healthy backend', () async {
       final states = <RuntimeState>[];
@@ -133,7 +172,10 @@ void main() {
       final subscription = runtime.state.listen(states.add);
       addTearDown(subscription.cancel);
 
-      await runtime.start().timeout(const Duration(seconds: 15));
+      await expectLater(
+        runtime.start().timeout(const Duration(seconds: 15)),
+        throwsStateError,
+      );
 
       expect(states.last.status, RuntimeStatus.crashed);
     });
@@ -144,7 +186,9 @@ Future<DesktopBackendRuntime> _createRuntime(
   Directory temp, {
   String mode = 'healthy',
   String manifestVersion = '24.15.0',
-  String? bundledNodeVersion,
+  String? bundledNodeVersion = '24.15.0',
+  List<String> externalBinaries = const <String>[],
+  int? port,
 }) async {
   final bundle = Directory.fromUri(temp.uri.resolve('bundle/'));
   final backend = Directory.fromUri(bundle.uri.resolve('data/backend/'));
@@ -157,12 +201,13 @@ Future<DesktopBackendRuntime> _createRuntime(
   );
   await File.fromUri(backend.uri.resolve('sub-store.bundle.js'))
       .writeAsString(source);
-  await File.fromUri(backend.uri.resolve('runtime-manifest.json'))
-      .writeAsString('{"testedNode":"$manifestVersion"}');
+  await File.fromUri(
+    backend.uri.resolve('runtime-manifest.json'),
+  ).writeAsString(
+    '{"testedNode":"$manifestVersion","externalBinary":${jsonEncode(externalBinaries)}}',
+  );
   if (bundledNodeVersion != null) {
-    final node = File.fromUri(
-      bundle.uri.resolve('data/runtime/linux-x64/bin/node'),
-    );
+    final node = File.fromUri(bundle.uri.resolve('data/runtime/node'));
     await node.parent.create(recursive: true);
     await node.writeAsString(
       '#!/bin/sh\nif [ "\$1" = "--version" ]; then echo v$bundledNodeVersion; exit 0; fi\ntouch "${node.parent.path}/selected"\nexec node "\$@"\n',
@@ -174,7 +219,7 @@ Future<DesktopBackendRuntime> _createRuntime(
       Directory.fromUri(temp.uri.resolve('application-support/')),
     ),
     bundleDirectory: bundle,
-    port: await _unusedPort(),
+    port: port ?? await _unusedPort(),
   );
 }
 

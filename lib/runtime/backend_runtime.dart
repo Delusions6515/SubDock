@@ -1,6 +1,10 @@
 import 'dart:async';
 
 abstract class BackendRuntime {
+  RuntimeState get currentState;
+
+  Uri get endpoint;
+
   Future<void> start();
 
   Future<void> stop();
@@ -10,6 +14,8 @@ abstract class BackendRuntime {
   Future<bool> isHealthy();
 
   Future<BackendInfo> info();
+
+  Future<void> dispose();
 
   Stream<RuntimeLog> get logs;
 
