@@ -33,6 +33,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  crypto: ^3.0.7
   file_selector: ^1.1.0
   path_provider: ^2.1.5
   tray_manager: 0.5.3
