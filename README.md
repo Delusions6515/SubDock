@@ -5,10 +5,12 @@ runtime harness and a minimal backend dashboard.
 
 ## Linux development
 
-Prepare a matching Sub-Store bundle and runtime manifest from upstream PR #641:
+Prepare the latest stable Backend, Frontend, and Linux runtime before building:
 
 ```sh
 tool/prepare_backend.sh
+tool/prepare_frontend.sh
+tool/prepare_runtime.sh linux-x64
 ```
 
 Then run the checks and Linux application through FVM:
@@ -19,6 +21,8 @@ fvm flutter test
 fvm flutter run -d linux
 ```
 
-The Linux build downloads a checksum-verified Node.js 24.15.0 fallback. At
-runtime, a system `node` is preferred when its major version matches the
-generated `runtime-manifest.json`.
+The Linux build is offline after preparation and always runs with its packaged
+Node.js runtime selected by the Backend manifest. Set a `SUBDOCK_*_VERSION`
+environment variable to pin a component for a release build. Use
+`tool/prepare_runtime.sh windows-x64`,
+`darwin-arm64`, or `darwin-x64` to prepare the other desktop targets.

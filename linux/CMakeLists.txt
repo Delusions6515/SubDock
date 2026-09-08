@@ -7,7 +7,7 @@ project(runner LANGUAGES CXX)
 set(BINARY_NAME "sub_dock")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "org.substore.sub_dock")
+set(APPLICATION_ID "org.substore.subdock")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -75,23 +75,23 @@ set_target_properties(${BINARY_NAME}
 include(flutter/generated_plugins.cmake)
 
 set(SUBDOCK_PROJECT_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
-set(SUBDOCK_BACKEND_DIR "${SUBDOCK_PROJECT_DIR}/.subdock/backend")
+set(SUBDOCK_RESOURCES_DIR "${SUBDOCK_PROJECT_DIR}/.subdock")
+set(SUBDOCK_BACKEND_DIR "${SUBDOCK_RESOURCES_DIR}/backend")
+set(SUBDOCK_FRONTEND_DIR "${SUBDOCK_RESOURCES_DIR}/frontend")
+set(SUBDOCK_RUNTIME_DIR "${SUBDOCK_RESOURCES_DIR}/runtime/linux-x64")
 foreach(backend_file sub-store.bundle.js runtime-manifest.json)
   if(NOT EXISTS "${SUBDOCK_BACKEND_DIR}/${backend_file}")
-    message(FATAL_ERROR
-      "Missing ${backend_file}. Run tool/prepare_backend.sh before building Linux.")
+    message(FATAL_ERROR "Missing ${backend_file}. Run tool/prepare_backend.sh before building Linux.")
   endif()
 endforeach()
-
-set(SUBDOCK_NODE_STAGING_DIR "${CMAKE_BINARY_DIR}/subdock-node")
-execute_process(
-  COMMAND "${CMAKE_COMMAND}"
-    "-DOUTPUT_DIR=${SUBDOCK_NODE_STAGING_DIR}"
-    -P "${SUBDOCK_PROJECT_DIR}/cmake/prepare_linux_node.cmake"
-  RESULT_VARIABLE SUBDOCK_NODE_RESULT
-)
-if(NOT SUBDOCK_NODE_RESULT EQUAL 0)
-  message(FATAL_ERROR "Failed to prepare bundled Node.js runtime.")
+foreach(runtime_file node bin/shoutrrr)
+  if(NOT EXISTS "${SUBDOCK_RUNTIME_DIR}/${runtime_file}")
+    message(FATAL_ERROR
+      "Missing ${runtime_file}. Run tool/prepare_runtime.sh linux-x64 before building Linux.")
+  endif()
+endforeach()
+if(NOT EXISTS "${SUBDOCK_FRONTEND_DIR}/index.html")
+  message(FATAL_ERROR "Missing frontend. Run tool/prepare_frontend.sh before building Linux.")
 endif()
 
 
@@ -111,14 +111,24 @@ install(CODE "
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
-install(DIRECTORY "${SUBDOCK_NODE_STAGING_DIR}/node-v24.15.0-linux-x64/"
-  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/runtime/linux-x64"
+install(PROGRAMS
+  "${SUBDOCK_RUNTIME_DIR}/node"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/runtime"
+  COMPONENT Runtime)
+
+install(PROGRAMS
+  "${SUBDOCK_RUNTIME_DIR}/bin/shoutrrr"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/runtime/bin"
   COMPONENT Runtime)
 
 install(FILES
   "${SUBDOCK_BACKEND_DIR}/sub-store.bundle.js"
   "${SUBDOCK_BACKEND_DIR}/runtime-manifest.json"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/backend"
+  COMPONENT Runtime)
+
+install(DIRECTORY "${SUBDOCK_FRONTEND_DIR}/"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/frontend"
   COMPONENT Runtime)
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"

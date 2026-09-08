@@ -18,7 +18,7 @@ void main() {
     expect(state.message, 'Backend exited with code 1');
   });
 
-  test('runtime directories keep data, logs, and backups separate', () async {
+  test('runtime directories keep writable state separate', () async {
     final temp = await Directory.systemTemp.createTemp('sub_dock_test_');
     addTearDown(() => temp.delete(recursive: true));
 
@@ -27,9 +27,16 @@ void main() {
     expect(await directories.data.exists(), isTrue);
     expect(await directories.logs.exists(), isTrue);
     expect(await directories.backups.exists(), isTrue);
-    expect(
-      {directories.data.path, directories.logs.path, directories.backups.path},
-      hasLength(3),
-    );
+    expect(await directories.config.exists(), isTrue);
+    expect(await directories.components.exists(), isTrue);
+    expect(await directories.staging.exists(), isTrue);
+    expect({
+      directories.data.path,
+      directories.logs.path,
+      directories.backups.path,
+      directories.config.path,
+      directories.components.path,
+      directories.staging.path,
+    }, hasLength(6));
   });
 }

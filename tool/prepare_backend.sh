@@ -2,29 +2,27 @@
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+. "$repo_root/tool/versions.sh"
 output_dir="$repo_root/.subdock/backend"
 work_dir=$(mktemp -d)
+backend_tag=$(subdock_resolve_tag "$SUBDOCK_BACKEND_VERSION" \
+  https://github.com/sub-store-org/Sub-Store.git)
 
 cleanup() {
   rm -rf "$work_dir"
 }
 trap cleanup 0 HUP INT TERM
 
-git clone --depth 1 --branch feat/runtime-manifest \
-  https://github.com/sub-store-org/Sub-Store.git "$work_dir/sub-store"
+download() {
+  curl --fail --location --retry 3 --retry-all-errors --output "$work_dir/$1" \
+    "https://github.com/sub-store-org/Sub-Store/releases/download/$backend_tag/$1"
+}
 
-backend_dir="$work_dir/sub-store/backend"
-if command -v pnpm >/dev/null 2>&1; then
-  pnpm --dir "$backend_dir" install --frozen-lockfile
-  pnpm --dir "$backend_dir" bundle:esbuild
-else
-  npx --yes pnpm@11.0.9 --dir "$backend_dir" install --frozen-lockfile
-  npx --yes pnpm@11.0.9 --dir "$backend_dir" bundle:esbuild
-fi
+download sub-store.bundle.js
+download runtime-manifest.json
 
 mkdir -p "$output_dir"
-install -m 0644 "$backend_dir/dist/sub-store.bundle.js" "$output_dir/sub-store.bundle.js"
-install -m 0644 "$backend_dir/dist/runtime-manifest.json" "$output_dir/runtime-manifest.json"
-git -C "$work_dir/sub-store" rev-parse HEAD > "$output_dir/source-commit"
+install -m 0644 "$work_dir/sub-store.bundle.js" "$output_dir/sub-store.bundle.js"
+install -m 0644 "$work_dir/runtime-manifest.json" "$output_dir/runtime-manifest.json"
 
-printf 'Prepared Sub-Store backend at %s\n' "$output_dir"
+printf 'Prepared Sub-Store %s at %s\n' "$backend_tag" "$output_dir"
