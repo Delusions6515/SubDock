@@ -3,10 +3,15 @@ import '../settings/backend_env.dart';
 import '../settings/backend_env_store.dart';
 
 class AppCoordinator {
-  AppCoordinator({required this.runtime, required this.environmentStore});
+  AppCoordinator({
+    required this.runtime,
+    required this.environmentStore,
+    this.startupBlocker,
+  });
 
   final BackendRuntime runtime;
   final BackendEnvStore environmentStore;
+  final String? startupBlocker;
   BackendEnvDocument _environment = BackendEnvDocument.parse('');
   Future<void> _operation = Future<void>.value();
 
@@ -62,6 +67,7 @@ class AppCoordinator {
       });
 
   Future<void> start() => _serialize(() async {
+    _ensureStartupAllowed();
     if (environmentIssues.isNotEmpty) {
       throw StateError(environmentIssues.first.message);
     }
@@ -71,6 +77,7 @@ class AppCoordinator {
   Future<void> stop() => _serialize(runtime.stop);
 
   Future<void> restart() => _serialize(() async {
+    _ensureStartupAllowed();
     if (environmentIssues.isNotEmpty) {
       throw StateError(environmentIssues.first.message);
     }
@@ -83,5 +90,9 @@ class AppCoordinator {
     final next = _operation.then((_) => action());
     _operation = next.catchError((Object _) {});
     return next;
+  }
+
+  void _ensureStartupAllowed() {
+    if (startupBlocker != null) throw StateError(startupBlocker!);
   }
 }

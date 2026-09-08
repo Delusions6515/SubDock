@@ -11,6 +11,9 @@ import 'desktop_lifecycle.dart';
 import 'runtime/desktop_backend_runtime.dart';
 import 'runtime/runtime_directories.dart';
 import 'settings/backend_env_store.dart';
+import 'update/component_metadata_store.dart';
+import 'update/component_recovery.dart';
+import 'update/data_backup_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,10 +26,25 @@ Future<void> main() async {
     );
   }
   final directories = await RuntimeDirectories.create();
+  String? startupBlocker;
+  try {
+    await ComponentRecovery(
+      bundleDirectory: File(Platform.resolvedExecutable).parent,
+      dataDirectory: directories.data,
+      metadataStore: ComponentMetadataStore(directories.components),
+      dataBackups: DataBackupStore(
+        backupsDirectory: directories.backups,
+        stagingDirectory: directories.staging,
+      ),
+    ).recoverPending();
+  } catch (error) {
+    startupBlocker = '组件更新恢复失败：$error';
+  }
   final runtime = DesktopBackendRuntime(directories: directories);
   final coordinator = AppCoordinator(
     runtime: runtime,
     environmentStore: BackendEnvStore(directories),
+    startupBlocker: startupBlocker,
   );
   try {
     await coordinator.loadEnvironment();
@@ -42,6 +60,8 @@ Future<void> main() async {
   runApp(
     SubDockApp(
       coordinator: coordinator,
+      autoStart: startupBlocker == null,
+      initialError: startupBlocker,
       desktopWarning: lifecycle.warning,
       onExit: lifecycle.exit,
     ),

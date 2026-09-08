@@ -23,6 +23,7 @@ class SubDockApp extends StatefulWidget {
     required this.coordinator,
     this.autoStart = true,
     this.enableWebView = true,
+    this.initialError,
     this.desktopWarning,
     this.onExit,
   });
@@ -30,6 +31,7 @@ class SubDockApp extends StatefulWidget {
   final AppCoordinator coordinator;
   final bool autoStart;
   final bool enableWebView;
+  final String? initialError;
   final ValueListenable<String?>? desktopWarning;
   final Future<void> Function()? onExit;
 
@@ -52,6 +54,8 @@ class _SubDockAppState extends State<SubDockApp> {
   void initState() {
     super.initState();
     _state = widget.coordinator.runtime.currentState;
+    _error = widget.initialError;
+    if (_error != null) _page = _AppPage.runtime;
     _stateSubscription = widget.coordinator.runtime.state.listen(_onState);
     _logSubscription = widget.coordinator.runtime.logs.listen(_appendLog);
     _lifecycleListener = AppLifecycleListener(

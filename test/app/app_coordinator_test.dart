@@ -54,6 +54,28 @@ void main() {
     expect(coordinator.webUiUri, Uri.parse('http://127.0.0.1:3100/'));
     expect(coordinator.webUiApiUri, Uri.parse('http://127.0.0.1:3100/subdock'));
   });
+
+  test(
+    'refuses backend start when update recovery could not complete',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'sub_dock_coordinator_',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+      final runtime = _FakeRuntime();
+      final coordinator = AppCoordinator(
+        runtime: runtime,
+        environmentStore: BackendEnvStore(
+          await RuntimeDirectories.fromBaseDirectory(temp),
+        ),
+        startupBlocker: '组件更新恢复失败',
+      );
+
+      await expectLater(coordinator.start(), throwsStateError);
+
+      expect(runtime.operations, isEmpty);
+    },
+  );
 }
 
 class _FakeRuntime implements BackendRuntime {
