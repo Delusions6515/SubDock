@@ -34,7 +34,11 @@ abstract class GithubReleaseSource {
   Future<GithubRelease> latest(String repository);
 }
 
-class GithubReleaseClient implements GithubReleaseSource {
+abstract class GithubReleaseDownloader implements GithubReleaseSource {
+  Future<void> downloadVerified(GithubReleaseAsset asset, File target);
+}
+
+class GithubReleaseClient implements GithubReleaseDownloader {
   GithubReleaseClient({HttpClient? httpClient, Uri? apiBase})
     : _httpClient = httpClient ?? HttpClient(),
       _apiBase = apiBase ?? Uri.parse('https://api.github.com/');
@@ -81,6 +85,7 @@ class GithubReleaseClient implements GithubReleaseSource {
     );
   }
 
+  @override
   Future<void> downloadVerified(GithubReleaseAsset asset, File target) async {
     if (await target.exists()) {
       throw StateError('Staging target already exists: ${target.path}');
