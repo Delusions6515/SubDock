@@ -58,6 +58,20 @@ void main() {
         ? 'Windows symlink creation needs elevation'
         : false,
   );
+
+  test('restores a completed backup without retaining staged data', () async {
+    await _write(data, 'settings.json', '{"generation":1}');
+    final backup = await store.create(data);
+    await _write(data, 'settings.json', '{"generation":2}');
+
+    await store.restore(backup, data);
+
+    expect(
+      await File('${data.path}/settings.json').readAsString(),
+      '{"generation":1}',
+    );
+    expect(await Directory('${temp.path}/staging').list().isEmpty, isTrue);
+  });
 }
 
 Future<void> _write(Directory root, String path, String value) async {

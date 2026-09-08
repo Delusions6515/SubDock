@@ -10,6 +10,7 @@ class DataBackupStore {
 
   static const _prefix = 'data-';
   static const _retainedBackups = 3;
+  static final _idPattern = RegExp(r'^data-[0-9]+-[0-9]+$');
 
   final Directory backupsDirectory;
   final Directory stagingDirectory;
@@ -53,6 +54,51 @@ class DataBackupStore {
     }
     ids.sort();
     return ids;
+  }
+
+  Future<void> restore(String backupId, Directory dataDirectory) async {
+    if (!_idPattern.hasMatch(backupId)) {
+      throw ArgumentError.value(backupId, 'backupId');
+    }
+    final backup = Directory.fromUri(
+      backupsDirectory.uri.resolve('$backupId/'),
+    );
+    if (!await backup.exists()) {
+      throw StateError('Backend data backup is missing: $backupId');
+    }
+    await stagingDirectory.create(recursive: true);
+    await restrictDirectoryToCurrentUser(stagingDirectory);
+    final nonce = '${DateTime.now().microsecondsSinceEpoch}-$pid';
+    final staged = Directory.fromUri(
+      stagingDirectory.uri.resolve('restore-$nonce/'),
+    );
+    final previous = Directory.fromUri(
+      dataDirectory.parent.uri.resolve('.subdock-restore-$nonce/'),
+    );
+    var movedPrevious = false;
+    var restored = false;
+    try {
+      await _copyDirectory(backup, staged);
+      if (await dataDirectory.exists()) {
+        await dataDirectory.rename(previous.path);
+        movedPrevious = true;
+      }
+      await staged.rename(dataDirectory.path);
+      restored = true;
+      await restrictDirectoryToCurrentUser(dataDirectory);
+    } catch (_) {
+      if (movedPrevious &&
+          !await dataDirectory.exists() &&
+          await previous.exists()) {
+        await previous.rename(dataDirectory.path);
+      }
+      rethrow;
+    } finally {
+      if (await staged.exists()) await staged.delete(recursive: true);
+      if (restored && await previous.exists()) {
+        await previous.delete(recursive: true);
+      }
+    }
   }
 
   Future<void> _copyDirectory(Directory source, Directory destination) async {
