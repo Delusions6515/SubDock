@@ -98,7 +98,7 @@ jobs:
             webkit2gtk-4.1 \
             libayatana-appindicator
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux-bundle
           path: build/linux/x64/release
