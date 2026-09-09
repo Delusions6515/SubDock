@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../settings/subdock_config.dart';
+
 abstract class BackendRuntime {
   RuntimeState get currentState;
 
@@ -12,6 +14,9 @@ abstract class BackendRuntime {
   Future<void> restart();
 
   Future<void> activateUserEnvironment(Map<String, String> environment);
+
+  Future<void> activateConfiguration(EffectiveRuntimeConfig configuration) =>
+      activateUserEnvironment(configuration.environment);
 
   Future<bool> isHealthy();
 

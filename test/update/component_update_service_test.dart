@@ -64,9 +64,7 @@ void main() {
 }
 
 Future<_Fixture> _fixture() async {
-  final root = await Directory.systemTemp.createTemp(
-    'subdock_update_service_',
-  );
+  final root = await Directory.systemTemp.createTemp('subdock_update_service_');
   final bundle = Directory.fromUri(root.uri.resolve('bundle/'));
   await _write(bundle, 'data/backend/version', '2.38.4\n');
   await _write(bundle, 'data/backend/sub-store.bundle.js', 'baseline');
@@ -110,7 +108,7 @@ class _FakeDownloads implements GithubReleaseDownloader {
   Future<GithubRelease> latest(String repository) => throw UnimplementedError();
 }
 
-class _FakeRuntime implements BackendRuntime {
+class _FakeRuntime extends BackendRuntime {
   var restarts = 0;
   var stops = 0;
 

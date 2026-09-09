@@ -5,6 +5,7 @@ import 'dart:io';
 import 'backend_runtime.dart';
 import 'runtime_directories.dart';
 import 'runtime_permissions.dart';
+import '../settings/subdock_config.dart';
 import '../update/component_metadata_store.dart';
 import '../update/component_resource_resolver.dart';
 
@@ -129,6 +130,10 @@ class DesktopBackendRuntime implements BackendRuntime {
         _ensureActive();
         _userEnvironment = Map<String, String>.of(environment);
       });
+
+  @override
+  Future<void> activateConfiguration(EffectiveRuntimeConfig configuration) =>
+      activateUserEnvironment(configuration.environment);
 
   @override
   Future<bool> isHealthy() async {

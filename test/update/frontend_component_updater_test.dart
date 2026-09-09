@@ -142,7 +142,7 @@ class _ZipDownloads implements GithubReleaseDownloader {
   Future<GithubRelease> latest(String repository) => throw UnimplementedError();
 }
 
-class _FakeRuntime implements BackendRuntime {
+class _FakeRuntime extends BackendRuntime {
   _FakeRuntime({required this.healthy});
 
   final bool healthy;

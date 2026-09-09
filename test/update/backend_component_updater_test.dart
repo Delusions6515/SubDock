@@ -167,7 +167,7 @@ class _FakeDownloads implements GithubReleaseDownloader {
   Future<GithubRelease> latest(String repository) => throw UnimplementedError();
 }
 
-class _FakeRuntime implements BackendRuntime {
+class _FakeRuntime extends BackendRuntime {
   _FakeRuntime({this.healthy = true});
 
   final bool healthy;

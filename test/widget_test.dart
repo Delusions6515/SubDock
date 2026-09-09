@@ -176,7 +176,7 @@ void main() {
   });
 }
 
-class _FakeBackendRuntime implements BackendRuntime {
+class _FakeBackendRuntime extends BackendRuntime {
   final _logs = StreamController<RuntimeLog>.broadcast(sync: true);
   final _states = StreamController<RuntimeState>.broadcast(sync: true);
   var starts = 0;

@@ -193,9 +193,9 @@ class EffectiveRuntimeConfig {
     required Map<String, String> systemEnvironment,
     required BackendEnvDocument backendEnvironment,
     required SubDockConfig config,
-    required Directory dataDirectory,
-    required Directory frontendDirectory,
-    required Directory metaFolder,
+    Directory? dataDirectory,
+    Directory? frontendDirectory,
+    Directory? metaFolder,
   }) {
     final environment = Map<String, String>.of(systemEnvironment);
     environment.addAll(backendEnvironment.values);
@@ -221,14 +221,18 @@ class EffectiveRuntimeConfig {
       environment['PORT'] = '${config.httpMeta.port}';
     }
     environment.putIfAbsent('PORT', () => '9876');
-    environment.addAll({
-      BackendEnvPolicy.dataBasePath: dataDirectory.path,
-      BackendEnvPolicy.frontendPath: frontendDirectory.path,
-      BackendEnvPolicy.metaFolder: metaFolder.path,
-      'META_TEMP_FOLDER': Directory.fromUri(
-        dataDirectory.uri.resolve('http-meta'),
-      ).path,
-    });
+    if (dataDirectory != null &&
+        frontendDirectory != null &&
+        metaFolder != null) {
+      environment.addAll({
+        BackendEnvPolicy.dataBasePath: dataDirectory.path,
+        BackendEnvPolicy.frontendPath: frontendDirectory.path,
+        BackendEnvPolicy.metaFolder: metaFolder.path,
+        'META_TEMP_FOLDER': Directory.fromUri(
+          dataDirectory.uri.resolve('http-meta'),
+        ).path,
+      });
+    }
     return EffectiveRuntimeConfig._(
       environment: UnmodifiableMapView(environment),
       httpMetaEnabled: config.httpMeta.enabled,

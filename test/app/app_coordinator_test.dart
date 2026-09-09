@@ -7,6 +7,8 @@ import 'package:subdock/runtime/backend_runtime.dart';
 import 'package:subdock/runtime/runtime_directories.dart';
 import 'package:subdock/settings/backend_env.dart';
 import 'package:subdock/settings/backend_env_store.dart';
+import 'package:subdock/settings/subdock_config.dart';
+import 'package:subdock/settings/subdock_config_store.dart';
 import 'package:subdock/update/component_metadata_store.dart';
 import 'package:subdock/update/component_update_checker.dart';
 import 'package:subdock/update/component_update_service.dart';
@@ -22,6 +24,9 @@ void main() {
       environmentStore: BackendEnvStore(
         await RuntimeDirectories.fromBaseDirectory(temp),
       ),
+      configurationStore: SubDockConfigStore(
+        await RuntimeDirectories.fromBaseDirectory(temp),
+      ),
     );
     final document = BackendEnvDocument.parse(
       'SUB_STORE_BACKEND_API_PORT=3002\n',
@@ -32,10 +37,41 @@ void main() {
       coordinator.start(),
     ]);
 
-    expect(runtime.operations, ['environment:3002', 'start']);
+    expect(runtime.operations, ['configuration:3002', 'start']);
     expect(coordinator.webUiUri.path, '/');
     expect(coordinator.webUiUri.queryParameters, isEmpty);
   });
+
+  test(
+    'activates saved SubDock overrides without changing backend ENV',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'subdock_coordinator_',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+      final directories = await RuntimeDirectories.fromBaseDirectory(temp);
+      final runtime = _FakeRuntime();
+      final coordinator = AppCoordinator(
+        runtime: runtime,
+        environmentStore: BackendEnvStore(directories),
+        configurationStore: SubDockConfigStore(directories),
+      );
+
+      await coordinator.saveEnvironment(
+        BackendEnvDocument.parse('SUB_STORE_BACKEND_API_PORT=3002\n'),
+      );
+      await coordinator.saveConfiguration(
+        const SubDockConfig(backend: SubDockBackendConfig(apiPort: 4000)),
+      );
+
+      expect(runtime.operations, ['configuration:3002', 'configuration:4000']);
+      expect(
+        (await coordinator.environmentStore.load()).rawText,
+        'SUB_STORE_BACKEND_API_PORT=3002\n',
+      );
+      expect(coordinator.webUiUri.port, 4000);
+    },
+  );
 
   test('opens a standalone frontend with its proxied API URL', () async {
     final temp = await Directory.systemTemp.createTemp('subdock_coordinator_');
@@ -128,7 +164,7 @@ class _FakeUpdates implements ComponentUpdateOperations {
   Future<void> update(ComponentUpdate update) async => operations.add('update');
 }
 
-class _FakeRuntime implements BackendRuntime {
+class _FakeRuntime extends BackendRuntime {
   final operations = <String>[];
   final _states = StreamController<RuntimeState>.broadcast();
   var port = 3001;
@@ -151,6 +187,18 @@ class _FakeRuntime implements BackendRuntime {
     port =
         int.tryParse(environment['SUB_STORE_BACKEND_API_PORT'] ?? '') ?? port;
     operations.add('environment:$port');
+  }
+
+  @override
+  Future<void> activateConfiguration(
+    EffectiveRuntimeConfig configuration,
+  ) async {
+    port =
+        int.tryParse(
+          configuration.environment['SUB_STORE_BACKEND_API_PORT'] ?? '',
+        ) ??
+        port;
+    operations.add('configuration:$port');
   }
 
   @override
