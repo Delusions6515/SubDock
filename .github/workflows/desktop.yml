@@ -63,7 +63,7 @@ jobs:
           dart pub global activate fastforge 0.6.12
           fastforge package --platform linux --targets deb,rpm
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-packages
           path: dist/**
@@ -74,7 +74,7 @@ jobs:
           tar --create --file build/linux/x64/release/linux-bundle.tar \
             --directory build/linux/x64/release bundle
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-bundle
           path: build/linux/x64/release/linux-bundle.tar
@@ -117,7 +117,7 @@ jobs:
       - name: Build standard Arch package
         run: su --login builder --shell /bin/sh --command "$GITHUB_WORKSPACE/tool/package_arch.sh"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: arch-package
           path: dist/*.pkg.tar.zst
@@ -158,7 +158,7 @@ jobs:
           dart pub global activate fastforge 0.6.12
           dart pub global run fastforge:main package --platform windows --targets exe
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-exe
           path: dist/**
@@ -217,7 +217,7 @@ jobs:
           dart pub global activate fastforge 0.6.12
           fastforge package --platform macos --targets dmg
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-${{ matrix.arch }}
           path: dist/**
