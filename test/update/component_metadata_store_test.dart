@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_metadata_store.dart';
 
 void main() {
   test('returns the packaged baseline before a component is updated', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_component_');
+    final temp = await Directory.systemTemp.createTemp('subdock_component_');
     addTearDown(() => temp.delete(recursive: true));
     final store = ComponentMetadataStore(temp);
 
@@ -21,7 +21,7 @@ void main() {
   });
 
   test('atomically persists rollback and pending recovery metadata', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_component_');
+    final temp = await Directory.systemTemp.createTemp('subdock_component_');
     addTearDown(() => temp.delete(recursive: true));
     final store = ComponentMetadataStore(temp);
     const metadata = ComponentMetadata(

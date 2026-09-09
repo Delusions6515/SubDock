@@ -12,5 +12,5 @@ package() {
   install -dm755 "$pkgdir/opt/$pkgname"
   cp -a "$startdir/bundle/." "$pkgdir/opt/$pkgname/"
   install -dm755 "$pkgdir/usr/bin"
-  ln -s "/opt/$pkgname/sub_dock" "$pkgdir/usr/bin/subdock"
+  ln -s "/opt/$pkgname/SubDock" "$pkgdir/usr/bin/subdock"
 }

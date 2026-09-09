@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_recovery.dart';
-import 'package:sub_dock/update/data_backup_store.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_recovery.dart';
+import 'package:subdock/update/data_backup_store.dart';
 
 void main() {
   late Directory temp;
@@ -14,7 +14,7 @@ void main() {
   late ComponentRecovery recovery;
 
   setUp(() async {
-    temp = await Directory.systemTemp.createTemp('sub_dock_recovery_');
+    temp = await Directory.systemTemp.createTemp('subdock_recovery_');
     bundle = Directory.fromUri(temp.uri.resolve('bundle/'));
     data = Directory.fromUri(temp.uri.resolve('application-support/data/'));
     metadata = ComponentMetadataStore(

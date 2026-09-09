@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/update/data_backup_store.dart';
+import 'package:subdock/update/data_backup_store.dart';
 
 void main() {
   late Directory temp;
@@ -9,7 +9,7 @@ void main() {
   late DataBackupStore store;
 
   setUp(() async {
-    temp = await Directory.systemTemp.createTemp('sub_dock_backup_');
+    temp = await Directory.systemTemp.createTemp('subdock_backup_');
     data = Directory.fromUri(temp.uri.resolve('data/'));
     store = DataBackupStore(
       backupsDirectory: Directory.fromUri(temp.uri.resolve('backups/')),

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
 
 void main() {
   test('runtime state retains status and diagnostics', () {
@@ -19,7 +19,7 @@ void main() {
   });
 
   test('runtime directories keep writable state separate', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_test_');
+    final temp = await Directory.systemTemp.createTemp('subdock_test_');
     addTearDown(() => temp.delete(recursive: true));
 
     final directories = await RuntimeDirectories.fromBaseDirectory(temp);

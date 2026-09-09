@@ -208,7 +208,7 @@ jobs:
           flutter pub get
           flutter build macos --release
 
-          app=build/macos/Build/Products/Release/sub_dock.app
+          app=build/macos/Build/Products/Release/SubDock.app
           tool/verify_bundle.sh "$app/Contents/MacOS"
 
       - name: Package DMG

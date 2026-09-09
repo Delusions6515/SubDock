@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_resource_resolver.dart';
-import 'package:sub_dock/update/frontend_component_updater.dart';
-import 'package:sub_dock/update/github_release_client.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_resource_resolver.dart';
+import 'package:subdock/update/frontend_component_updater.dart';
+import 'package:subdock/update/github_release_client.dart';
 
 void main() {
   test('extracts a verified Frontend candidate and activates it', () async {
@@ -77,7 +77,7 @@ void main() {
 
 Future<_Fixture> _fixture({bool malicious = false, bool healthy = true}) async {
   final root = await Directory.systemTemp.createTemp(
-    'sub_dock_frontend_update_',
+    'subdock_frontend_update_',
   );
   final bundle = Directory.fromUri(root.uri.resolve('bundle/'));
   await _write(bundle, 'data/backend/version', '2.38.4\n');

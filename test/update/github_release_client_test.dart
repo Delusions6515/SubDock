@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/update/github_release_client.dart';
+import 'package:subdock/update/github_release_client.dart';
 
 void main() {
   late Directory temp;
@@ -11,7 +11,7 @@ void main() {
   late GithubReleaseClient client;
 
   setUp(() async {
-    temp = await Directory.systemTemp.createTemp('sub_dock_release_');
+    temp = await Directory.systemTemp.createTemp('subdock_release_');
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     client = GithubReleaseClient(
       apiBase: Uri.parse('http://${server.address.address}:${server.port}/'),

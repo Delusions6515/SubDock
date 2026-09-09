@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/desktop_main.dart';
+import 'package:subdock/desktop_main.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() {

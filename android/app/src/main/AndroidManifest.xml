@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="sub_dock"
+        android:label="SubDock"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

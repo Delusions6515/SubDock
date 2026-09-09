@@ -2,20 +2,20 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/update/backend_component_updater.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_resource_resolver.dart';
-import 'package:sub_dock/update/data_backup_store.dart';
-import 'package:sub_dock/update/github_release_client.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/update/backend_component_updater.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_resource_resolver.dart';
+import 'package:subdock/update/data_backup_store.dart';
+import 'package:subdock/update/github_release_client.dart';
 
 void main() {
   test(
     'activates a verified Backend candidate after backing up data',
     () async {
       final temp = await Directory.systemTemp.createTemp(
-        'sub_dock_backend_update_',
+        'subdock_backend_update_',
       );
       addTearDown(() => temp.delete(recursive: true));
       final bundle = Directory.fromUri(temp.uri.resolve('bundle/'));
@@ -85,7 +85,7 @@ void main() {
     'restores data and the prior component if health verification fails',
     () async {
       final temp = await Directory.systemTemp.createTemp(
-        'sub_dock_backend_update_',
+        'subdock_backend_update_',
       );
       addTearDown(() => temp.delete(recursive: true));
       final bundle = Directory.fromUri(temp.uri.resolve('bundle/'));

@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/settings/backend_env.dart';
-import 'package:sub_dock/settings/backend_env_store.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/settings/backend_env.dart';
+import 'package:subdock/settings/backend_env_store.dart';
 
 void main() {
   test('parses comments, empty values, and the first equals sign', () {
@@ -44,7 +44,7 @@ void main() {
   });
 
   test('saves a valid document atomically with private permissions', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_env_test_');
+    final temp = await Directory.systemTemp.createTemp('subdock_env_test_');
     addTearDown(() => temp.delete(recursive: true));
     final directories = await RuntimeDirectories.fromBaseDirectory(temp);
     final store = BackendEnvStore(directories);

@@ -7,11 +7,11 @@ import 'package:flutter/material.dart'
 import 'package:flutter/scheduler.dart' show AppLifecycleState;
 import 'package:flutter/widgets.dart' show Offstage, SizedBox, ValueKey;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/app/app.dart';
-import 'package:sub_dock/app/app_coordinator.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/settings/backend_env_store.dart';
+import 'package:subdock/app/app.dart';
+import 'package:subdock/app/app_coordinator.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/settings/backend_env_store.dart';
 
 void main() {
   testWidgets('runtime controls the backend through its abstraction', (
@@ -21,7 +21,7 @@ void main() {
     addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
     final runtime = _FakeBackendRuntime();
     final directories = await tester.runAsync(() async {
-      temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
       return RuntimeDirectories.fromBaseDirectory(temp);
     });
     final coordinator = AppCoordinator(
@@ -82,7 +82,7 @@ void main() {
     addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
     final runtime = _FakeBackendRuntime();
     final directories = await tester.runAsync(() async {
-      temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
       return RuntimeDirectories.fromBaseDirectory(temp);
     });
     final coordinator = AppCoordinator(
@@ -110,7 +110,7 @@ void main() {
       late Directory temp;
       addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
       final directories = await tester.runAsync(() async {
-        temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+        temp = await Directory.systemTemp.createTemp('subdock_widget_');
         return RuntimeDirectories.fromBaseDirectory(temp);
       });
       final coordinator = AppCoordinator(
@@ -150,7 +150,7 @@ void main() {
     addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
     final runtime = _FakeBackendRuntime();
     final directories = await tester.runAsync(() async {
-      temp = await Directory.systemTemp.createTemp('sub_dock_widget_');
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
       return RuntimeDirectories.fromBaseDirectory(temp);
     });
     final coordinator = AppCoordinator(

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "org.substore" "\0"
-            VALUE "FileDescription", "sub_dock" "\0"
+            VALUE "FileDescription", "SubDock" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "sub_dock" "\0"
+            VALUE "InternalName", "SubDock" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 org.substore. All rights reserved." "\0"
-            VALUE "OriginalFilename", "sub_dock.exe" "\0"
-            VALUE "ProductName", "sub_dock" "\0"
+            VALUE "OriginalFilename", "SubDock.exe" "\0"
+            VALUE "ProductName", "SubDock" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

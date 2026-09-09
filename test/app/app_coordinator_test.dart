@@ -2,19 +2,19 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/app/app_coordinator.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/settings/backend_env.dart';
-import 'package:sub_dock/settings/backend_env_store.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_update_checker.dart';
-import 'package:sub_dock/update/component_update_service.dart';
-import 'package:sub_dock/update/github_release_client.dart';
+import 'package:subdock/app/app_coordinator.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/settings/backend_env.dart';
+import 'package:subdock/settings/backend_env_store.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_update_checker.dart';
+import 'package:subdock/update/component_update_service.dart';
+import 'package:subdock/update/github_release_client.dart';
 
 void main() {
   test('serializes environment activation before a backend start', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_coordinator_');
+    final temp = await Directory.systemTemp.createTemp('subdock_coordinator_');
     addTearDown(() => temp.delete(recursive: true));
     final runtime = _FakeRuntime();
     final coordinator = AppCoordinator(
@@ -38,7 +38,7 @@ void main() {
   });
 
   test('opens a standalone frontend with its proxied API URL', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_coordinator_');
+    final temp = await Directory.systemTemp.createTemp('subdock_coordinator_');
     addTearDown(() => temp.delete(recursive: true));
     final coordinator = AppCoordinator(
       runtime: _FakeRuntime(),
@@ -63,7 +63,7 @@ void main() {
     'refuses backend start when update recovery could not complete',
     () async {
       final temp = await Directory.systemTemp.createTemp(
-        'sub_dock_coordinator_',
+        'subdock_coordinator_',
       );
       addTearDown(() => temp.delete(recursive: true));
       final runtime = _FakeRuntime();
@@ -82,7 +82,7 @@ void main() {
   );
 
   test('serializes a component update with runtime actions', () async {
-    final temp = await Directory.systemTemp.createTemp('sub_dock_coordinator_');
+    final temp = await Directory.systemTemp.createTemp('subdock_coordinator_');
     addTearDown(() => temp.delete(recursive: true));
     final runtime = _FakeRuntime();
     final updates = _FakeUpdates(runtime.operations);

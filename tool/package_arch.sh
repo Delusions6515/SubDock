@@ -5,7 +5,7 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 bundle_dir="$repo_root/build/linux/x64/release/bundle"
 pkgbuild="$repo_root/linux/packaging/arch/PKGBUILD"
 
-test -x "$bundle_dir/sub_dock"
+test -x "$bundle_dir/SubDock"
 test -f "$pkgbuild"
 command -v makepkg >/dev/null 2>&1
 

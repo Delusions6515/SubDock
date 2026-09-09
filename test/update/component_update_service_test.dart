@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_resource_resolver.dart';
-import 'package:sub_dock/update/component_update_service.dart';
-import 'package:sub_dock/update/data_backup_store.dart';
-import 'package:sub_dock/update/github_release_client.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_resource_resolver.dart';
+import 'package:subdock/update/component_update_service.dart';
+import 'package:subdock/update/data_backup_store.dart';
+import 'package:subdock/update/github_release_client.dart';
 
 void main() {
   test('rolls Frontend back to its previous component', () async {
@@ -65,7 +65,7 @@ void main() {
 
 Future<_Fixture> _fixture() async {
   final root = await Directory.systemTemp.createTemp(
-    'sub_dock_update_service_',
+    'subdock_update_service_',
   );
   final bundle = Directory.fromUri(root.uri.resolve('bundle/'));
   await _write(bundle, 'data/backend/version', '2.38.4\n');

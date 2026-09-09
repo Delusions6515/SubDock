@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_resource_resolver.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_resource_resolver.dart';
 
 void main() {
   late Directory temp;
@@ -12,7 +12,7 @@ void main() {
   late ComponentResourceResolver resolver;
 
   setUp(() async {
-    temp = await Directory.systemTemp.createTemp('sub_dock_resources_');
+    temp = await Directory.systemTemp.createTemp('subdock_resources_');
     bundle = Directory.fromUri(temp.uri.resolve('bundle/'));
     components = Directory.fromUri(temp.uri.resolve('components/'));
     store = ComponentMetadataStore(components);

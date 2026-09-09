@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/runtime/backend_runtime.dart';
-import 'package:sub_dock/runtime/desktop_backend_runtime.dart';
-import 'package:sub_dock/runtime/runtime_directories.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
+import 'package:subdock/runtime/backend_runtime.dart';
+import 'package:subdock/runtime/desktop_backend_runtime.dart';
+import 'package:subdock/runtime/runtime_directories.dart';
+import 'package:subdock/update/component_metadata_store.dart';
 
 void main() {
   group('DesktopBackendRuntime', () {
@@ -14,7 +14,7 @@ void main() {
     late DesktopBackendRuntime runtime;
 
     setUp(() async {
-      temp = await Directory.systemTemp.createTemp('sub_dock_runtime_');
+      temp = await Directory.systemTemp.createTemp('subdock_runtime_');
       runtime = await _createRuntime(temp, bundledNodeVersion: '24.15.0');
     });
 

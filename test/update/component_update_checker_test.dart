@@ -1,17 +1,17 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sub_dock/update/component_metadata_store.dart';
-import 'package:sub_dock/update/component_resource_resolver.dart';
-import 'package:sub_dock/update/component_update_checker.dart';
-import 'package:sub_dock/update/github_release_client.dart';
+import 'package:subdock/update/component_metadata_store.dart';
+import 'package:subdock/update/component_resource_resolver.dart';
+import 'package:subdock/update/component_update_checker.dart';
+import 'package:subdock/update/github_release_client.dart';
 
 void main() {
   late Directory temp;
   late ComponentUpdateChecker checker;
 
   setUp(() async {
-    temp = await Directory.systemTemp.createTemp('sub_dock_check_');
+    temp = await Directory.systemTemp.createTemp('subdock_check_');
     final bundle = Directory.fromUri(temp.uri.resolve('bundle/'));
     final components = Directory.fromUri(temp.uri.resolve('components/'));
     await _write(bundle, 'data/backend/version', '2.38.4\n');
