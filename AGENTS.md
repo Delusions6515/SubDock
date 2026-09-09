@@ -12,8 +12,9 @@ SubDock is a native shell that runs a packaged Sub-Store backend and embeds its 
 
 - **Runtime lifecycle**: Start in `lib/runtime/desktop_backend_runtime.dart`; keep `BackendRuntime`
   platform-neutral and preserve process identity, serialized mutation, failure publication, and cleanup.
-- **Configuration**: Start in `lib/settings/backend_env.dart` for policy, `backend_env_store.dart` for
-  persistence, and `AppCoordinator` for activation. Preserve raw ENV text and SubDock-reserved paths.
+- **Configuration**: Start in `lib/settings/subdock_config.dart` for the effective resolver,
+  `backend_env*.dart` / `subdock_config_store.dart` for persistence, and `AppCoordinator` for activation.
+  Preserve raw ENV text, schema validation, precedence, and SubDock-reserved paths.
 - **WebUI boundary**: Start in `lib/app/app.dart`, but keep endpoint selection in `AppCoordinator`.
   Preserve same-origin containment, external-browser handoff, download interception, and recovery UI.
 - **Packaged resources**: Treat `data/runtime`, `data/backend`, and `data/frontend` as the runtime
@@ -25,10 +26,12 @@ SubDock is a native shell that runs a packaged Sub-Store backend and embeds its 
   Keep both layers; `restart` must never call `start` after `stop` fails.
 - Lifecycle failures publish the actionable runtime state before rethrowing. Cleanup must cover only
   resources owned by that runtime instance and must still run when shutdown fails.
-- Backend environment precedence is system `<` user `<` SubDock-reserved values. The packaged binary
-  directory is prepended to `PATH`; users may not override data or frontend resource paths.
-- Saving ENV does not restart the backend. Persistence occurs before runtime activation, so activation
-  failure can leave disk newer than in-memory state; do not hide or reverse this ordering accidentally.
+- `EffectiveRuntimeConfig.resolve` is the only configuration merge point: system `<` user ENV `<`
+  SubDock config `<` reserved paths. The packaged binary directory is prepended to `PATH`; users may
+  not override data, frontend, or `META_FOLDER` paths.
+- Saving raw ENV or `SubDockConfig` does not restart the backend. Each persistence happens before
+  runtime activation, so activation failure can leave disk newer than in-memory state; do not hide or
+  reverse this ordering accidentally.
 - Create the WebView only for a running backend with a valid reachable configuration. Keep same-origin
   routes embedded, open external HTTP(S) outside, deny other schemes, and cap Blob exports at 16 MiB.
 - Tray initialization failure deliberately changes window close from hide-to-tray to full exit with a
