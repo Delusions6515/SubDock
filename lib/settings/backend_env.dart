@@ -85,8 +85,9 @@ class BackendEnvPolicy {
   static const frontendHost = 'SUB_STORE_FRONTEND_HOST';
   static const frontendPort = 'SUB_STORE_FRONTEND_PORT';
   static const corsAllowedOrigins = 'SUB_STORE_CORS_ALLOWED_ORIGINS';
+  static const metaFolder = 'META_FOLDER';
 
-  static const reservedKeys = <String>{dataBasePath, frontendPath};
+  static const reservedKeys = <String>{dataBasePath, frontendPath, metaFolder};
 
   static List<BackendEnvIssue> validate(BackendEnvDocument document) {
     final issues = [...document.issues];
