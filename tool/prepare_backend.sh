@@ -5,8 +5,9 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo_root/tool/versions.sh"
 output_dir="$repo_root/.subdock/backend"
 work_dir=$(mktemp -d)
-backend_tag=$(subdock_resolve_tag "$SUBDOCK_BACKEND_VERSION" \
-  https://github.com/sub-store-org/Sub-Store.git)
+backend_repository=sub-store-org/Sub-Store
+backend_tag=$(subdock_resolve_release_tag "$SUBDOCK_BACKEND_VERSION" \
+  "$backend_repository" sub-store.bundle.js)
 
 cleanup() {
   rm -rf "$work_dir"
@@ -15,7 +16,7 @@ trap cleanup 0 HUP INT TERM
 
 download() {
   curl --fail --location --retry 3 --retry-all-errors --output "$work_dir/$1" \
-    "https://github.com/sub-store-org/Sub-Store/releases/download/$backend_tag/$1"
+    "$(subdock_release_asset_url "$backend_repository" "$backend_tag" "$1")"
 }
 
 download sub-store.bundle.js

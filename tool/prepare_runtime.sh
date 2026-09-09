@@ -15,8 +15,17 @@ if test -z "$SUBDOCK_NODE_VERSION"; then
 fi
 node_version=${SUBDOCK_NODE_VERSION#v}
 test -n "$node_version"
-shoutrrr_tag=$(subdock_resolve_tag "$SUBDOCK_SHOUTRRR_VERSION" \
-  https://github.com/containrrr/shoutrrr.git)
+shoutrrr_repository=containrrr/shoutrrr
+case "$target" in
+  darwin-*)
+    shoutrrr_tag=$(subdock_resolve_tag "$SUBDOCK_SHOUTRRR_VERSION" \
+      "https://github.com/$shoutrrr_repository.git")
+    ;;
+  *)
+    shoutrrr_tag=$(subdock_resolve_release_tag "$SUBDOCK_SHOUTRRR_VERSION" \
+      "$shoutrrr_repository" shoutrrr_linux_amd64.tar.gz)
+    ;;
+esac
 case "$shoutrrr_tag" in
   v*) shoutrrr_version=${shoutrrr_tag#v} ;;
   *) shoutrrr_version=$shoutrrr_tag; shoutrrr_tag="v$shoutrrr_tag" ;;
@@ -95,11 +104,11 @@ case "$target" in
   *)
     shoutrrr_checksums="$work_dir/shoutrrr_checksums.txt"
     curl --fail --location --retry 3 --retry-all-errors --output "$shoutrrr_checksums" \
-      "https://github.com/containrrr/shoutrrr/releases/download/$shoutrrr_tag/shoutrrr_${shoutrrr_version}_checksums.txt"
+      "$(subdock_release_asset_url "$shoutrrr_repository" "$shoutrrr_tag" "shoutrrr_${shoutrrr_version}_checksums.txt")"
     shoutrrr_sha=$(awk -v asset="$shoutrrr_archive" '$2 == asset { print $1 }' "$shoutrrr_checksums")
     test -n "$shoutrrr_sha"
     download_verified "$shoutrrr_archive" \
-      "https://github.com/containrrr/shoutrrr/releases/download/$shoutrrr_tag/$shoutrrr_archive" \
+      "$(subdock_release_asset_url "$shoutrrr_repository" "$shoutrrr_tag" "$shoutrrr_archive")" \
       "$shoutrrr_sha"
     mkdir -p "$work_dir/shoutrrr-bin"
     case "$shoutrrr_archive" in

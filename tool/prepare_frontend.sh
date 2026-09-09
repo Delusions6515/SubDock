@@ -5,29 +5,25 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo_root/tool/versions.sh"
 output_dir="$repo_root/.subdock/frontend"
 work_dir=$(mktemp -d)
-frontend_tag=$(subdock_resolve_tag "$SUBDOCK_FRONTEND_VERSION" \
-  https://github.com/sub-store-org/Sub-Store-Front-End.git)
+frontend_repository=sub-store-org/Sub-Store-Front-End
+frontend_tag=$(subdock_resolve_release_tag "$SUBDOCK_FRONTEND_VERSION" \
+  "$frontend_repository" dist.zip)
 
 cleanup() {
   rm -rf "$work_dir"
 }
 trap cleanup 0 HUP INT TERM
 
-source_dir="$work_dir/source"
-git clone --depth 1 --branch "$frontend_tag" \
-  https://github.com/sub-store-org/Sub-Store-Front-End.git "$source_dir"
-
-if command -v pnpm >/dev/null 2>&1; then
-  pnpm --dir "$source_dir" install --frozen-lockfile
-  pnpm --dir "$source_dir" build
-else
-  npx --yes pnpm@11.0.9 --dir "$source_dir" install --frozen-lockfile
-  npx --yes pnpm@11.0.9 --dir "$source_dir" build
-fi
+archive="$work_dir/dist.zip"
+curl --fail --location --retry 3 --retry-all-errors --output "$archive" \
+  "$(subdock_release_asset_url "$frontend_repository" "$frontend_tag" dist.zip)"
+unzip -q "$archive" -d "$work_dir/extracted"
+source_dir="$work_dir/extracted/dist"
+test -f "$source_dir/index.html"
 
 staging_dir="$work_dir/frontend"
 mkdir -p "$staging_dir"
-cp -R "$source_dir/dist/." "$staging_dir"
+cp -R "$source_dir/." "$staging_dir"
 test -f "$staging_dir/index.html"
 printf '%s\n' "$frontend_tag" > "$staging_dir/version"
 
