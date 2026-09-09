@@ -18,6 +18,6 @@ trap cleanup EXIT HUP INT TERM
 cp "$pkgbuild" "$work_dir/PKGBUILD"
 sed -i "s/^pkgver=.*/pkgver=$version/" "$work_dir/PKGBUILD"
 cp -R "$bundle_dir" "$work_dir/bundle"
-(cd "$work_dir" && makepkg --cleanbuild --syncdeps --noconfirm)
+(cd "$work_dir" && makepkg --cleanbuild --noconfirm)
 mkdir -p "$repo_root/dist"
 find "$work_dir" -maxdepth 1 -type f -name '*.pkg.tar.zst' -exec cp {} "$repo_root/dist/" \;
