@@ -170,7 +170,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14
+          - runner: macos-15
             arch: arm64
             runtime: darwin-arm64
 
@@ -212,6 +212,8 @@ jobs:
           tool/verify_bundle.sh "$app/Contents/MacOS"
 
       - name: Package DMG
+        env:
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: 'NO'
         run: |
           npm install --global appdmg
           dart pub global activate fastforge 0.6.12
