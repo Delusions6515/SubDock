@@ -771,12 +771,6 @@ class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _port;
   late final TextEditingController _path;
   late final TextEditingController _cors;
-  late final TextEditingController _configApiHost;
-  late final TextEditingController _configApiPort;
-  late final TextEditingController _configPath;
-  late final TextEditingController _configCors;
-  late final TextEditingController _metaHost;
-  late final TextEditingController _metaPort;
   var _updating = false;
   var _dirty = false;
   var _configurationDirty = false;
@@ -796,13 +790,8 @@ class _SettingsPageState extends State<_SettingsPage> {
     _port = TextEditingController();
     _path = TextEditingController();
     _cors = TextEditingController();
-    _configApiHost = TextEditingController();
-    _configApiPort = TextEditingController();
-    _configPath = TextEditingController();
-    _configCors = TextEditingController();
-    _metaHost = TextEditingController();
-    _metaPort = TextEditingController();
     _syncControllers();
+    _syncConfiguration();
     unawaited(_loadComponentStatuses());
   }
 
@@ -817,7 +806,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (!_configurationDirty &&
         oldWidget.configuration != widget.configuration) {
       _configuration = widget.configuration;
-      _syncConfigControllers();
+      _syncConfiguration();
     }
   }
 
@@ -828,12 +817,6 @@ class _SettingsPageState extends State<_SettingsPage> {
     _port.dispose();
     _path.dispose();
     _cors.dispose();
-    _configApiHost.dispose();
-    _configApiPort.dispose();
-    _configPath.dispose();
-    _configCors.dispose();
-    _metaHost.dispose();
-    _metaPort.dispose();
     super.dispose();
   }
 
@@ -853,68 +836,26 @@ class _SettingsPageState extends State<_SettingsPage> {
     _updating = false;
   }
 
-  void _syncConfigControllers() {
-    _updating = true;
-    final backend = _configuration.backend;
-    _configApiHost.text = backend.apiHost ?? '';
-    _configApiPort.text = backend.apiPort?.toString() ?? '';
-    _configPath.text = backend.frontendBackendPath ?? '';
-    _configCors.text = backend.corsAllowedOrigins ?? '';
-    _metaHost.text = _configuration.httpMeta.host ?? '';
-    _metaPort.text = _configuration.httpMeta.port?.toString() ?? '';
+  void _syncConfiguration() {
     _httpMetaEnabled = _configuration.httpMeta.enabled;
-    _updating = false;
   }
 
-  String? _nullableText(String value) =>
-      value.trim().isEmpty ? null : value.trim();
-
-  int? _nullablePort(String value) =>
-      value.trim().isEmpty ? null : int.tryParse(value.trim());
-
-  void _updateConfiguration({
-    SubDockBackendConfig? backend,
-    SubDockHttpMetaConfig? httpMeta,
-  }) {
+  void _updateConfiguration(SubDockHttpMetaConfig httpMeta) {
     if (_updating) return;
     setState(() {
-      _configuration = _configuration.copyWith(
-        backend: backend,
-        httpMeta: httpMeta,
-      );
+      _configuration = _configuration.copyWith(httpMeta: httpMeta);
       _configurationDirty = true;
-      _syncConfigControllers();
+      _syncConfiguration();
     });
   }
 
   String? get _configurationIssue {
-    if (_configApiPort.text.trim().isNotEmpty &&
-        _nullablePort(_configApiPort.text) == null) {
-      return 'SubDock API Port 必须是 1-65535 的整数';
-    }
-    if (_metaPort.text.trim().isNotEmpty &&
-        _nullablePort(_metaPort.text) == null) {
-      return 'HTTP-META Port 必须是 1-65535 的整数';
-    }
     try {
       SubDockConfig.fromJson(_configuration.toJson());
     } on FormatException catch (error) {
       return error.message;
     }
     return null;
-  }
-
-  void _updateConfigBackendField(String field, String value) {
-    final backend = _configuration.backend;
-    final parsed = _nullablePort(value);
-    _updateConfiguration(
-      backend: switch (field) {
-        'host' => backend.copyWith(apiHost: _nullableText(value)),
-        'port' => backend.copyWith(apiPort: parsed),
-        'path' => backend.copyWith(frontendBackendPath: _nullableText(value)),
-        _ => backend.copyWith(corsAllowedOrigins: _nullableText(value)),
-      },
-    );
   }
 
   Future<void> _saveConfiguration() async {
@@ -1117,111 +1058,19 @@ class _SettingsPageState extends State<_SettingsPage> {
           subtitle: const Text('辅助启动失败时 Backend 仍会继续运行'),
           value: _httpMetaEnabled,
           onChanged: (value) => _updateConfiguration(
-            httpMeta: _configuration.httpMeta.copyWith(enabled: value),
+            _configuration.httpMeta.copyWith(enabled: value),
           ),
         ),
-        ExpansionTile(
-          title: const Text('高级 SubDock 覆盖'),
-          subtitle: const Text('覆盖 ENV 与默认值；通常无需修改'),
-          childrenPadding: const EdgeInsets.only(bottom: 12),
-          children: [
-            _overrideField(
-              controller: _configApiHost,
-              label: 'Backend API Host 覆盖',
-              onChanged: (value) => _updateConfigBackendField('host', value),
-              onFollow: () => _updateConfiguration(
-                backend: _configuration.backend.copyWith(apiHost: null),
-              ),
-              following: _configuration.backend.apiHost == null,
-            ),
-            _overrideField(
-              controller: _configApiPort,
-              label: 'Backend API Port 覆盖',
-              keyboardType: TextInputType.number,
-              onChanged: (value) => _updateConfigBackendField('port', value),
-              onFollow: () => _updateConfiguration(
-                backend: _configuration.backend.copyWith(apiPort: null),
-              ),
-              following: _configuration.backend.apiPort == null,
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('覆盖合并模式'),
-              value:
-                  _configuration.backend.merge ??
-                  BackendEnvPolicy.isMergeEnabledFor(_document),
-              onChanged: (value) => _updateConfiguration(
-                backend: _configuration.backend.copyWith(merge: value),
-              ),
-              secondary: TextButton(
-                onPressed: () => _updateConfiguration(
-                  backend: _configuration.backend.copyWith(merge: null),
-                ),
-                child: const Text('跟随 ENV'),
-              ),
-            ),
-            _overrideField(
-              controller: _configPath,
-              label: 'Frontend Backend Path 覆盖',
-              onChanged: (value) => _updateConfigBackendField('path', value),
-              onFollow: () => _updateConfiguration(
-                backend: _configuration.backend.copyWith(
-                  frontendBackendPath: null,
-                ),
-              ),
-              following: _configuration.backend.frontendBackendPath == null,
-            ),
-            _overrideField(
-              controller: _configCors,
-              label: 'CORS Allowed Origins 覆盖',
-              onChanged: (value) => _updateConfigBackendField('cors', value),
-              onFollow: () => _updateConfiguration(
-                backend: _configuration.backend.copyWith(
-                  corsAllowedOrigins: null,
-                ),
-              ),
-              following: _configuration.backend.corsAllowedOrigins == null,
-            ),
-            _overrideField(
-              controller: _metaHost,
-              label: 'HTTP-META Host 覆盖',
-              onChanged: (value) => _updateConfiguration(
-                httpMeta: _configuration.httpMeta.copyWith(
-                  host: _nullableText(value),
-                ),
-              ),
-              onFollow: () => _updateConfiguration(
-                httpMeta: _configuration.httpMeta.copyWith(host: null),
-              ),
-              following: _configuration.httpMeta.host == null,
-            ),
-            _overrideField(
-              controller: _metaPort,
-              label: 'HTTP-META Port 覆盖',
-              keyboardType: TextInputType.number,
-              onChanged: (value) => _updateConfiguration(
-                httpMeta: _configuration.httpMeta.copyWith(
-                  port: _nullablePort(value),
-                ),
-              ),
-              onFollow: () => _updateConfiguration(
-                httpMeta: _configuration.httpMeta.copyWith(port: null),
-              ),
-              following: _configuration.httpMeta.port == null,
-            ),
-            if (configurationIssue != null)
-              Text(
-                configurationIssue,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: configurationIssue == null && _configurationDirty
-                  ? _saveConfiguration
-                  : null,
-              child: const Text('保存 SubDock 配置'),
-            ),
-          ],
+        if (configurationIssue != null)
+          Text(
+            configurationIssue,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        FilledButton(
+          onPressed: configurationIssue == null && _configurationDirty
+              ? _saveConfiguration
+              : null,
+          child: const Text('保存 SubDock 配置'),
         ),
         const Divider(height: 40),
         Text('Backend 配置', style: Theme.of(context).textTheme.headlineSmall),
@@ -1299,32 +1148,6 @@ class _SettingsPageState extends State<_SettingsPage> {
       ],
     );
   }
-
-  Widget _overrideField({
-    required TextEditingController controller,
-    required String label,
-    required ValueChanged<String> onChanged,
-    required VoidCallback onFollow,
-    required bool following,
-    TextInputType? keyboardType,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          helperText: following ? '当前跟随 ENV / 默认值' : 'SubDock 覆盖值',
-          suffixIcon: TextButton(
-            onPressed: onFollow,
-            child: const Text('跟随 ENV'),
-          ),
-        ),
-        onChanged: onChanged,
-      ),
-    ],
-  );
 }
 
 class _ComponentCard extends StatelessWidget {
