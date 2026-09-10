@@ -25,11 +25,13 @@ class AppCoordinator {
   final ComponentUpdateOperations? componentUpdates;
   BackendEnvDocument _environment = BackendEnvDocument.parse('');
   SubDockConfig _configuration = const SubDockConfig();
+  String? _configurationError;
   Map<String, String> _effectiveEnvironment = const <String, String>{};
   Future<void> _operation = Future<void>.value();
 
   BackendEnvDocument get environment => _environment;
   SubDockConfig get configuration => _configuration;
+  String? get configurationError => _configurationError;
 
   List<BackendEnvIssue> get environmentIssues =>
       BackendEnvPolicy.validate(_environment);
@@ -63,7 +65,15 @@ class AppCoordinator {
 
   Future<void> loadEnvironment() => _serialize(() async {
     final document = await environmentStore.load();
-    final configuration = await _loadConfiguration();
+    SubDockConfig configuration;
+    try {
+      configuration = await _loadConfiguration();
+      _configurationError = null;
+    } on FormatException catch (error) {
+      _configuration = const SubDockConfig();
+      _configurationError = error.message;
+      throw StateError('SubDock 配置无效：${error.message}');
+    }
     final issues = BackendEnvPolicy.validate(document);
     if (issues.isNotEmpty) {
       _environment = document;
@@ -91,6 +101,7 @@ class AppCoordinator {
         await store.save(configuration);
         await _activate(_environment, configuration);
         _configuration = configuration;
+        _configurationError = null;
       });
 
   Future<void> resetConfiguration() => _serialize(() async {
@@ -100,6 +111,7 @@ class AppCoordinator {
     const configuration = SubDockConfig();
     await _activate(_environment, configuration);
     _configuration = configuration;
+    _configurationError = null;
   });
 
   Future<void> start() => _serialize(() async {

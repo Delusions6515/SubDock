@@ -11,6 +11,7 @@ import 'package:webview_all/webview_all.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../runtime/backend_runtime.dart';
 import '../settings/backend_env.dart';
+import '../settings/subdock_config.dart';
 import '../update/component_metadata_store.dart';
 import '../update/component_update_checker.dart';
 import '../update/component_update_service.dart';
@@ -240,8 +241,14 @@ class _SubDockAppState extends State<SubDockApp> {
       _LogsPage(logs: _logs),
       _SettingsPage(
         environment: widget.coordinator.environment,
+        configuration: widget.coordinator.configuration,
+        configurationError: widget.coordinator.configurationError,
         coordinator: widget.coordinator,
         onSave: _saveEnvironment,
+        onSaveConfiguration: (configuration) =>
+            _run(() => widget.coordinator.saveConfiguration(configuration)),
+        onResetConfiguration: () =>
+            _run(widget.coordinator.resetConfiguration),
         onRestart: () => _run(widget.coordinator.restart),
       ),
     ];
@@ -721,14 +728,22 @@ class _LogsPage extends StatelessWidget {
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.environment,
+    required this.configuration,
+    required this.configurationError,
     required this.coordinator,
     required this.onSave,
+    required this.onSaveConfiguration,
+    required this.onResetConfiguration,
     required this.onRestart,
   });
 
   final BackendEnvDocument environment;
+  final SubDockConfig configuration;
+  final String? configurationError;
   final AppCoordinator coordinator;
   final Future<void> Function(BackendEnvDocument document) onSave;
+  final Future<void> Function(SubDockConfig configuration) onSaveConfiguration;
+  final Future<void> Function() onResetConfiguration;
   final VoidCallback onRestart;
 
   @override
@@ -737,13 +752,22 @@ class _SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<_SettingsPage> {
   late BackendEnvDocument _document;
+  late SubDockConfig _configuration;
   late final TextEditingController _raw;
   late final TextEditingController _host;
   late final TextEditingController _port;
   late final TextEditingController _path;
   late final TextEditingController _cors;
+  late final TextEditingController _configApiHost;
+  late final TextEditingController _configApiPort;
+  late final TextEditingController _configPath;
+  late final TextEditingController _configCors;
+  late final TextEditingController _metaHost;
+  late final TextEditingController _metaPort;
   var _updating = false;
   var _dirty = false;
+  var _configurationDirty = false;
+  var _httpMetaEnabled = true;
   final _componentUpdates = <ComponentKind, ComponentUpdate>{};
   final _componentStatuses = <ComponentKind, ComponentVersionStatus>{};
   final _componentErrors = <ComponentKind, String>{};
@@ -753,11 +777,18 @@ class _SettingsPageState extends State<_SettingsPage> {
   void initState() {
     super.initState();
     _document = widget.environment;
+    _configuration = widget.configuration;
     _raw = TextEditingController();
     _host = TextEditingController();
     _port = TextEditingController();
     _path = TextEditingController();
     _cors = TextEditingController();
+    _configApiHost = TextEditingController();
+    _configApiPort = TextEditingController();
+    _configPath = TextEditingController();
+    _configCors = TextEditingController();
+    _metaHost = TextEditingController();
+    _metaPort = TextEditingController();
     _syncControllers();
     unawaited(_loadComponentStatuses());
   }
@@ -770,6 +801,10 @@ class _SettingsPageState extends State<_SettingsPage> {
       _document = widget.environment;
       _syncControllers();
     }
+    if (!_configurationDirty && oldWidget.configuration != widget.configuration) {
+      _configuration = widget.configuration;
+      _syncConfigControllers();
+    }
   }
 
   @override
@@ -779,6 +814,12 @@ class _SettingsPageState extends State<_SettingsPage> {
     _port.dispose();
     _path.dispose();
     _cors.dispose();
+    _configApiHost.dispose();
+    _configApiPort.dispose();
+    _configPath.dispose();
+    _configCors.dispose();
+    _metaHost.dispose();
+    _metaPort.dispose();
     super.dispose();
   }
 
@@ -796,6 +837,98 @@ class _SettingsPageState extends State<_SettingsPage> {
       BackendEnvPolicy.localOrigin(_document).origin,
     );
     _updating = false;
+  }
+
+  void _syncConfigControllers() {
+    _updating = true;
+    final backend = _configuration.backend;
+    _configApiHost.text = backend.apiHost ?? '';
+    _configApiPort.text = backend.apiPort?.toString() ?? '';
+    _configPath.text = backend.frontendBackendPath ?? '';
+    _configCors.text = backend.corsAllowedOrigins ?? '';
+    _metaHost.text = _configuration.httpMeta.host ?? '';
+    _metaPort.text = _configuration.httpMeta.port?.toString() ?? '';
+    _httpMetaEnabled = _configuration.httpMeta.enabled;
+    _updating = false;
+  }
+
+  String? _nullableText(String value) => value.trim().isEmpty ? null : value.trim();
+
+  int? _nullablePort(String value) =>
+      value.trim().isEmpty ? null : int.tryParse(value.trim());
+
+  void _updateConfiguration({
+    SubDockBackendConfig? backend,
+    SubDockHttpMetaConfig? httpMeta,
+  }) {
+    if (_updating) return;
+    setState(() {
+      _configuration = _configuration.copyWith(
+        backend: backend,
+        httpMeta: httpMeta,
+      );
+      _configurationDirty = true;
+      _syncConfigControllers();
+    });
+  }
+
+  String? get _configurationIssue {
+    if (_configApiPort.text.trim().isNotEmpty &&
+        _nullablePort(_configApiPort.text) == null) {
+      return 'SubDock API Port 必须是 1-65535 的整数';
+    }
+    if (_metaPort.text.trim().isNotEmpty && _nullablePort(_metaPort.text) == null) {
+      return 'HTTP-META Port 必须是 1-65535 的整数';
+    }
+    try {
+      SubDockConfig.fromJson(_configuration.toJson());
+    } on FormatException catch (error) {
+      return error.message;
+    }
+    return null;
+  }
+
+  void _updateConfigBackendField(String field, String value) {
+    final backend = _configuration.backend;
+    final parsed = _nullablePort(value);
+    _updateConfiguration(
+      backend: switch (field) {
+        'host' => backend.copyWith(apiHost: _nullableText(value)),
+        'port' => backend.copyWith(apiPort: parsed),
+        'path' => backend.copyWith(frontendBackendPath: _nullableText(value)),
+        _ => backend.copyWith(corsAllowedOrigins: _nullableText(value)),
+      },
+    );
+  }
+
+  Future<void> _saveConfiguration() async {
+    final issue = _configurationIssue;
+    if (issue != null) return;
+    final backend = _configuration.backend;
+    final externalCors = backend.corsAllowedOrigins != null &&
+        BackendEnvPolicy.externalOrigins(
+          BackendEnvDocument.parse(
+            '${BackendEnvPolicy.corsAllowedOrigins}=${backend.corsAllowedOrigins}',
+          ),
+        ).isNotEmpty;
+    final nonLoopback = backend.apiHost != null &&
+        backend.apiHost != 'localhost' &&
+        backend.apiHost != '::1' &&
+        !backend.apiHost!.startsWith('127.');
+    if (externalCors &&
+        !await _confirm('允许外部 origin 会使其能够访问 Backend API。是否继续保存？')) {
+      return;
+    }
+    if (nonLoopback &&
+        !await _confirm('Backend 没有鉴权；非回环地址会让同一网络中的设备访问全部 API。是否继续保存？')) {
+      return;
+    }
+    await widget.onSaveConfiguration(_configuration);
+    if (!mounted) return;
+    setState(() => _configurationDirty = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('SubDock 配置已保存；不会自动重启服务。')),
+    );
   }
 
   void _updateRaw(String value) {
@@ -942,10 +1075,124 @@ class _SettingsPageState extends State<_SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final issues = BackendEnvPolicy.validate(_document);
+    final configurationIssue = _configurationIssue;
     final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        Text('SubDock 配置', style: Theme.of(context).textTheme.headlineSmall),
+        if (widget.configurationError != null) ...[
+          Text(
+            '配置文件无效：${widget.configurationError}',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _configurationDirty
+                ? null
+                : () => unawaited(widget.onResetConfiguration()),
+            child: const Text('重置 SubDock 配置'),
+          ),
+        ],
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('启用 HTTP-META'),
+          subtitle: const Text('辅助启动失败时 Backend 仍会继续运行'),
+          value: _httpMetaEnabled,
+          onChanged: (value) => _updateConfiguration(
+            httpMeta: _configuration.httpMeta.copyWith(enabled: value),
+          ),
+        ),
+        _overrideField(
+          controller: _configApiHost,
+          label: 'Backend API Host 覆盖',
+          onChanged: (value) => _updateConfigBackendField('host', value),
+          onFollow: () => _updateConfiguration(
+            backend: _configuration.backend.copyWith(apiHost: null),
+          ),
+          following: _configuration.backend.apiHost == null,
+        ),
+        _overrideField(
+          controller: _configApiPort,
+          label: 'Backend API Port 覆盖',
+          keyboardType: TextInputType.number,
+          onChanged: (value) => _updateConfigBackendField('port', value),
+          onFollow: () => _updateConfiguration(
+            backend: _configuration.backend.copyWith(apiPort: null),
+          ),
+          following: _configuration.backend.apiPort == null,
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('覆盖合并模式'),
+          value: _configuration.backend.merge ??
+              BackendEnvPolicy.isMergeEnabledFor(_document),
+          onChanged: (value) => _updateConfiguration(
+            backend: _configuration.backend.copyWith(merge: value),
+          ),
+          secondary: TextButton(
+            onPressed: () => _updateConfiguration(
+              backend: _configuration.backend.copyWith(merge: null),
+            ),
+            child: const Text('跟随 ENV'),
+          ),
+        ),
+        _overrideField(
+          controller: _configPath,
+          label: 'Frontend Backend Path 覆盖',
+          onChanged: (value) => _updateConfigBackendField('path', value),
+          onFollow: () => _updateConfiguration(
+            backend: _configuration.backend.copyWith(frontendBackendPath: null),
+          ),
+          following: _configuration.backend.frontendBackendPath == null,
+        ),
+        _overrideField(
+          controller: _configCors,
+          label: 'CORS Allowed Origins 覆盖',
+          onChanged: (value) => _updateConfigBackendField('cors', value),
+          onFollow: () => _updateConfiguration(
+            backend: _configuration.backend.copyWith(corsAllowedOrigins: null),
+          ),
+          following: _configuration.backend.corsAllowedOrigins == null,
+        ),
+        _overrideField(
+          controller: _metaHost,
+          label: 'HTTP-META Host 覆盖',
+          onChanged: (value) => _updateConfiguration(
+            httpMeta: _configuration.httpMeta.copyWith(host: _nullableText(value)),
+          ),
+          onFollow: () => _updateConfiguration(
+            httpMeta: _configuration.httpMeta.copyWith(host: null),
+          ),
+          following: _configuration.httpMeta.host == null,
+        ),
+        _overrideField(
+          controller: _metaPort,
+          label: 'HTTP-META Port 覆盖',
+          keyboardType: TextInputType.number,
+          onChanged: (value) => _updateConfiguration(
+            httpMeta: _configuration.httpMeta.copyWith(
+              port: _nullablePort(value),
+            ),
+          ),
+          onFollow: () => _updateConfiguration(
+            httpMeta: _configuration.httpMeta.copyWith(port: null),
+          ),
+          following: _configuration.httpMeta.port == null,
+        ),
+        if (configurationIssue != null)
+          Text(
+            configurationIssue,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        const SizedBox(height: 8),
+        FilledButton(
+          onPressed: configurationIssue == null && _configurationDirty
+              ? _saveConfiguration
+              : null,
+          child: const Text('保存 SubDock 配置'),
+        ),
+        const Divider(height: 40),
         Text('Backend 配置', style: Theme.of(context).textTheme.headlineSmall),
         TextField(
           controller: _host,
@@ -1022,6 +1269,29 @@ class _SettingsPageState extends State<_SettingsPage> {
       ],
     );
   }
+
+  Widget _overrideField({
+    required TextEditingController controller,
+    required String label,
+    required ValueChanged<String> onChanged,
+    required VoidCallback onFollow,
+    required bool following,
+    TextInputType? keyboardType,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: following ? '当前跟随 ENV / 默认值' : 'SubDock 覆盖值',
+          suffixIcon: TextButton(onPressed: onFollow, child: const Text('跟随 ENV')),
+        ),
+        onChanged: onChanged,
+      ),
+    ],
+  );
 }
 
 class _ComponentCard extends StatelessWidget {
