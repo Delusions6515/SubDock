@@ -67,13 +67,20 @@ class DesktopBackendRuntime implements BackendRuntime {
   );
   Future<void> _operation = Future<void>.value();
   Process? _process;
+  Process? _httpMetaProcess;
   HttpClient? _httpClient;
+  HttpClient? _httpMetaClient;
   IOSink? _logSink;
   Future<void> _logWrites = Future<void>.value();
   Timer? _healthTimer;
   bool _stopping = false;
   bool _checkingHealth = false;
   bool _disposed = false;
+  bool _httpMetaEnabled = true;
+  HttpMetaStatus _httpMetaStatus = HttpMetaStatus.disabled;
+  int? _httpMetaPort;
+  String? _httpMetaVersion;
+  String? _httpMetaMessage;
 
   @override
   RuntimeState get currentState => _currentState;
@@ -133,7 +140,11 @@ class DesktopBackendRuntime implements BackendRuntime {
 
   @override
   Future<void> activateConfiguration(EffectiveRuntimeConfig configuration) =>
-      activateUserEnvironment(configuration.environment);
+      _serialize(() async {
+        _ensureActive();
+        _userEnvironment = Map<String, String>.of(configuration.environment);
+        _httpMetaEnabled = configuration.httpMetaEnabled;
+      });
 
   @override
   Future<bool> isHealthy() async {
@@ -175,6 +186,8 @@ class DesktopBackendRuntime implements BackendRuntime {
     _stopping = false;
     _emit(RuntimeStatus.starting);
     try {
+      await _openLogSink();
+      await _startHttpMeta();
       await _verifyPortAvailable();
       final resources = await _componentResources.resolve();
       final manifest = await _readRuntimeManifest(resources.backend);
@@ -186,8 +199,6 @@ class DesktopBackendRuntime implements BackendRuntime {
       if (!await bundle.exists()) {
         throw StateError('Backend bundle is missing: ${bundle.path}');
       }
-      await _openLogSink();
-
       final process = await Process.start(node, [
         bundle.path,
       ], environment: _environment(resources.frontend));
@@ -219,6 +230,15 @@ class DesktopBackendRuntime implements BackendRuntime {
         }
         if (identical(_process, process)) _process = null;
       }
+      final metaProcess = _httpMetaProcess;
+      if (metaProcess != null) {
+        try {
+          await _terminate(metaProcess);
+        } on Object {
+          // Preserve the backend startup failure.
+        }
+        if (identical(_httpMetaProcess, metaProcess)) _httpMetaProcess = null;
+      }
       _closeHttpClient();
       await _closeLogSink();
       _emit(RuntimeStatus.crashed, '$error');
@@ -230,8 +250,10 @@ class DesktopBackendRuntime implements BackendRuntime {
     _healthTimer?.cancel();
     _healthTimer = null;
     final process = _process;
-    if (process == null) {
+    final metaProcess = _httpMetaProcess;
+    if (process == null && metaProcess == null) {
       _closeHttpClient();
+      _closeHttpMetaClient();
       await _closeLogSink();
       if (_currentState.status != RuntimeStatus.stopped) {
         _emit(RuntimeStatus.stopped);
@@ -242,9 +264,13 @@ class DesktopBackendRuntime implements BackendRuntime {
     _stopping = true;
     _emit(RuntimeStatus.stopping);
     try {
-      await _terminate(process);
+      if (metaProcess != null) await _terminate(metaProcess);
+      if (process != null) await _terminate(process);
       _closeHttpClient();
+      _closeHttpMetaClient();
       await _closeLogSink();
+      _httpMetaProcess = null;
+      _httpMetaStatus = HttpMetaStatus.stopped;
       if (identical(_process, process)) {
         _process = null;
         _emit(RuntimeStatus.stopped);
@@ -284,6 +310,105 @@ class DesktopBackendRuntime implements BackendRuntime {
       throw StateError('Backend port $port is occupied by an unknown process');
     } finally {
       await socket?.close();
+    }
+  }
+
+  Future<void> _startHttpMeta() async {
+    if (!_httpMetaEnabled) {
+      _httpMetaStatus = HttpMetaStatus.disabled;
+      _httpMetaMessage = null;
+      return;
+    }
+    _httpMetaStatus = HttpMetaStatus.starting;
+    _httpMetaPort = int.tryParse(_environmentValue('PORT') ?? '') ?? 9876;
+    try {
+      final resources = await _componentResources.resolveHttpMeta();
+      await _verifyHttpMetaPortAvailable();
+      final node = _runtimeNode;
+      if (!await node.exists()) {
+        throw StateError('Packaged Node.js runtime is missing: ${node.path}');
+      }
+      final process = await Process.start(node.path, [
+        resources.bundle.path,
+      ], environment: _httpMetaEnvironment(resources));
+      _httpMetaProcess = process;
+      _capture(process.stdout, RuntimeLogSource.httpMetaStdout);
+      _capture(process.stderr, RuntimeLogSource.httpMetaStderr);
+      unawaited(
+        process.exitCode.then((code) => _handleHttpMetaExit(process, code)),
+      );
+      if (!await _waitForHttpMetaHealthy(process)) {
+        await _terminate(process);
+        _httpMetaProcess = null;
+        throw StateError('HTTP-META did not become healthy');
+      }
+      _httpMetaStatus = HttpMetaStatus.running;
+      _httpMetaVersion = resources.version;
+      _httpMetaMessage = null;
+    } catch (error) {
+      _httpMetaStatus = HttpMetaStatus.unavailable;
+      _httpMetaMessage = '$error';
+      _httpMetaVersion = null;
+      // HTTP-META is an optional helper; Backend startup continues.
+    }
+  }
+
+  Future<void> _verifyHttpMetaPortAvailable() async {
+    final port = _httpMetaPort!;
+    ServerSocket? socket;
+    try {
+      socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
+    } on SocketException {
+      throw StateError(
+        'HTTP-META port $port is occupied by an unknown process',
+      );
+    } finally {
+      await socket?.close();
+    }
+  }
+
+  Map<String, String> _httpMetaEnvironment(HttpMetaResources resources) {
+    final environment = _environment(directories.data);
+    environment['HOST'] =
+        _environmentValue('HOST') ?? InternetAddress.loopbackIPv4.address;
+    environment['PORT'] = '${_httpMetaPort ?? 9876}';
+    environment['META_FOLDER'] = resources.metaDirectory.path;
+    environment['META_TEMP_FOLDER'] = Directory.fromUri(
+      directories.data.uri.resolve('http-meta/'),
+    ).path;
+    return environment;
+  }
+
+  Future<bool> _waitForHttpMetaHealthy(Process process) async {
+    final stopwatch = Stopwatch()..start();
+    while (stopwatch.elapsed < _healthCheckTimeout) {
+      if (!identical(_httpMetaProcess, process)) return false;
+      if (await _requestHttpMetaHealthy()) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return false;
+  }
+
+  Future<bool> _requestHttpMetaHealthy() async {
+    final client = _httpMetaClient ??= HttpClient()
+      ..connectionTimeout = _httpRequestTimeout;
+    try {
+      final request = await client.getUrl(
+        Uri(
+          scheme: 'http',
+          host:
+              _environmentValue('HOST') ?? InternetAddress.loopbackIPv4.address,
+          port: _httpMetaPort ?? 9876,
+          path: '/test',
+        ),
+      );
+      final response = await request.close().timeout(_httpRequestTimeout);
+      await response.drain<void>();
+      return response.statusCode == HttpStatus.ok;
+    } on Object {
+      _httpMetaClient?.close(force: true);
+      _httpMetaClient = null;
+      return false;
     }
   }
 
@@ -519,11 +644,29 @@ class DesktopBackendRuntime implements BackendRuntime {
     }
   }
 
+  void _handleHttpMetaExit(Process process, int exitCode) {
+    if (!identical(_httpMetaProcess, process)) return;
+    _httpMetaProcess = null;
+    _closeHttpMetaClient();
+    if (_stopping) {
+      _httpMetaStatus = HttpMetaStatus.stopped;
+      _httpMetaMessage = null;
+    } else {
+      _httpMetaStatus = HttpMetaStatus.degraded;
+      _httpMetaMessage = 'HTTP-META exited with code $exitCode';
+    }
+    _emit(_currentState.status, _currentState.message);
+  }
+
   void _emit(RuntimeStatus status, [String? message]) {
     _currentState = RuntimeState(
       status: status,
       changedAt: DateTime.now(),
       message: message,
+      httpMetaStatus: _httpMetaStatus,
+      httpMetaPort: _httpMetaPort,
+      httpMetaVersion: _httpMetaVersion,
+      httpMetaMessage: _httpMetaMessage,
     );
     if (!_states.isClosed) _states.add(_currentState);
   }
@@ -580,6 +723,11 @@ class DesktopBackendRuntime implements BackendRuntime {
   void _closeHttpClient() {
     _httpClient?.close(force: true);
     _httpClient = null;
+  }
+
+  void _closeHttpMetaClient() {
+    _httpMetaClient?.close(force: true);
+    _httpMetaClient = null;
   }
 
   Future<void> _closeLogSink() async {

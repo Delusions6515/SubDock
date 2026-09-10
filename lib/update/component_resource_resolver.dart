@@ -17,6 +17,22 @@ class ComponentResources {
   final String frontendVersion;
 }
 
+class HttpMetaResources {
+  const HttpMetaResources({
+    required this.directory,
+    required this.bundle,
+    required this.metaDirectory,
+    required this.version,
+    required this.mihomoVersion,
+  });
+
+  final Directory directory;
+  final File bundle;
+  final Directory metaDirectory;
+  final String version;
+  final String mihomoVersion;
+}
+
 class ComponentResourceResolver {
   ComponentResourceResolver({
     required Directory bundleDirectory,
@@ -55,6 +71,52 @@ class ComponentResourceResolver {
       backendVersion: metadata[0].active ?? packaged.backend,
       frontendVersion: metadata[1].active ?? packaged.frontend,
     );
+  }
+
+  Future<HttpMetaResources> resolveHttpMeta() async {
+    final directory = Directory.fromUri(
+      _dataDirectory.uri.resolve('http-meta/'),
+    );
+    final bundle = File.fromUri(directory.uri.resolve('http-meta.bundle.js'));
+    final meta = Directory.fromUri(directory.uri.resolve('meta/'));
+    final tpl = File.fromUri(meta.uri.resolve('tpl.yaml'));
+    final mihomoName = Platform.isWindows ? 'mihomo.exe' : 'mihomo';
+    final mihomo = File.fromUri(meta.uri.resolve(mihomoName));
+    final version = await _readVersion(
+      File.fromUri(directory.uri.resolve('version')),
+    );
+    final mihomoVersion = await _readVersion(
+      File.fromUri(meta.uri.resolve('mihomo-version')),
+    );
+    for (final file in <File>[bundle, tpl, mihomo]) {
+      if (!await file.exists()) {
+        throw StateError(
+          'Packaged http-meta resource is missing: ${file.path}',
+        );
+      }
+    }
+    if (!Platform.isWindows && ((await mihomo.stat()).mode & 0x49) == 0) {
+      throw StateError('Packaged mihomo is not executable: ${mihomo.path}');
+    }
+    return HttpMetaResources(
+      directory: directory,
+      bundle: bundle,
+      metaDirectory: meta,
+      version: version,
+      mihomoVersion: mihomoVersion,
+    );
+  }
+
+  Future<String> _readVersion(File file) async {
+    if (!await file.exists()) {
+      throw StateError('Packaged version marker is missing: ${file.path}');
+    }
+    final raw = await file.readAsString();
+    final value = raw.endsWith('\n') ? raw.substring(0, raw.length - 1) : raw;
+    if (value.isEmpty || value.contains('\n') || value.trim() != value) {
+      throw StateError('Packaged version marker is invalid: ${file.path}');
+    }
+    return value;
   }
 
   Future<Directory> _resolveDirectory(

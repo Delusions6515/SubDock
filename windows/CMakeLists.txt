@@ -64,6 +64,7 @@ set(SUBDOCK_PROJECT_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
 set(SUBDOCK_RESOURCES_DIR "${SUBDOCK_PROJECT_DIR}/.subdock")
 set(SUBDOCK_BACKEND_DIR "${SUBDOCK_RESOURCES_DIR}/backend")
 set(SUBDOCK_FRONTEND_DIR "${SUBDOCK_RESOURCES_DIR}/frontend")
+set(SUBDOCK_HTTP_META_DIR "${SUBDOCK_RESOURCES_DIR}/http-meta/windows-x64")
 set(SUBDOCK_RUNTIME_DIR "${SUBDOCK_RESOURCES_DIR}/runtime/windows-x64")
 foreach(backend_file sub-store.bundle.js runtime-manifest.json version)
   if(NOT EXISTS "${SUBDOCK_BACKEND_DIR}/${backend_file}")
@@ -79,6 +80,11 @@ endforeach()
 if(NOT EXISTS "${SUBDOCK_FRONTEND_DIR}/index.html")
   message(FATAL_ERROR "Missing frontend. Run tool/prepare_frontend.sh before building Windows.")
 endif()
+foreach(http_meta_file http-meta.bundle.js version meta/tpl.yaml meta/mihomo.exe meta/mihomo-version)
+  if(NOT EXISTS "${SUBDOCK_HTTP_META_DIR}/${http_meta_file}")
+    message(FATAL_ERROR "Missing http-meta resource ${http_meta_file}. Run tool/prepare_http_meta.sh windows-x64 before building Windows.")
+  endif()
+endforeach()
 
 
 # === Installation ===
@@ -114,6 +120,10 @@ install(FILES
 
 install(DIRECTORY "${SUBDOCK_FRONTEND_DIR}/"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/frontend"
+  COMPONENT Runtime)
+
+install(DIRECTORY "${SUBDOCK_HTTP_META_DIR}/"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/http-meta"
   COMPONENT Runtime)
 
 install(FILES

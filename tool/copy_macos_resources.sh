@@ -13,6 +13,7 @@ case "${SUBDOCK_MACOS_RUNTIME_TARGET:?missing SUBDOCK_MACOS_RUNTIME_TARGET}" in
     ;;
 esac
 runtime_dir="$resources_dir/runtime/$runtime_target"
+http_meta_dir="$resources_dir/http-meta/$runtime_target"
 destination="${TARGET_BUILD_DIR:?}/${WRAPPER_NAME:?}/Contents/MacOS/data"
 
 for file in \
@@ -22,7 +23,12 @@ for file in \
   "$resources_dir/backend/runtime-manifest.json" \
   "$resources_dir/backend/version" \
   "$resources_dir/frontend/index.html" \
-  "$resources_dir/frontend/version"; do
+  "$resources_dir/frontend/version" \
+  "$http_meta_dir/http-meta.bundle.js" \
+  "$http_meta_dir/version" \
+  "$http_meta_dir/meta/tpl.yaml" \
+  "$http_meta_dir/meta/mihomo" \
+  "$http_meta_dir/meta/mihomo-version"; do
   test -f "$file"
 done
 
@@ -31,6 +37,7 @@ mkdir -p "$destination"
 cp -R "$runtime_dir" "$destination/runtime"
 cp -R "$resources_dir/backend" "$destination/backend"
 cp -R "$resources_dir/frontend" "$destination/frontend"
+cp -R "$http_meta_dir" "$destination/http-meta"
 cp "$project_dir/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png" \
   "$destination/tray_icon.png"
 mkdir -p "$destination/licenses"

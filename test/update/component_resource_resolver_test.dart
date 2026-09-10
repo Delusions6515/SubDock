@@ -95,6 +95,24 @@ void main() {
       await expectLater(resolver.resolve(), throwsStateError);
     },
   );
+
+  test('resolves packaged HTTP-META resources and version markers', () async {
+    await _write(bundle, 'data/http-meta/http-meta.bundle.js', 'bundle');
+    await _write(bundle, 'data/http-meta/version', '1.3.0\n');
+    await _write(bundle, 'data/http-meta/meta/tpl.yaml', 'tpl');
+    await _write(bundle, 'data/http-meta/meta/mihomo-version', 'v1.19.30\n');
+    final mihomoPath =
+        'data/http-meta/meta/${Platform.isWindows ? 'mihomo.exe' : 'mihomo'}';
+    await _write(bundle, mihomoPath, 'mihomo');
+    final mihomo = File.fromUri(bundle.uri.resolve(mihomoPath));
+    if (!Platform.isWindows) await Process.run('chmod', ['755', mihomo.path]);
+
+    final resources = await resolver.resolveHttpMeta();
+
+    expect(resources.version, '1.3.0');
+    expect(resources.mihomoVersion, 'v1.19.30');
+    expect(resources.bundle.path, endsWith('http-meta.bundle.js'));
+  });
 }
 
 Future<void> _write(Directory root, String path, String value) async {

@@ -247,8 +247,7 @@ class _SubDockAppState extends State<SubDockApp> {
         onSave: _saveEnvironment,
         onSaveConfiguration: (configuration) =>
             _run(() => widget.coordinator.saveConfiguration(configuration)),
-        onResetConfiguration: () =>
-            _run(widget.coordinator.resetConfiguration),
+        onResetConfiguration: () => _run(widget.coordinator.resetConfiguration),
         onRestart: () => _run(widget.coordinator.restart),
       ),
     ];
@@ -667,6 +666,20 @@ class _RuntimePage extends StatelessWidget {
         _InfoRow(label: 'Node', value: info?.nodeVersion),
         _InfoRow(label: 'Backend', value: info?.backendVersion),
         _InfoRow(label: 'Port', value: info == null ? null : '${info!.port}'),
+        _InfoRow(
+          label: 'HTTP-META',
+          value: switch (state.httpMetaStatus) {
+            HttpMetaStatus.disabled => '已禁用',
+            HttpMetaStatus.unavailable =>
+              '不可用${state.httpMetaMessage == null ? '' : '：${state.httpMetaMessage}'}',
+            HttpMetaStatus.starting => '启动中',
+            HttpMetaStatus.running =>
+              '运行中，端口 ${state.httpMetaPort ?? '-'}，版本 ${state.httpMetaVersion ?? '-'}',
+            HttpMetaStatus.degraded =>
+              '已降级${state.httpMetaMessage == null ? '' : '：${state.httpMetaMessage}'}',
+            HttpMetaStatus.stopped => '已停止',
+          },
+        ),
         const SizedBox(height: 24),
         Wrap(
           spacing: 12,
@@ -801,7 +814,8 @@ class _SettingsPageState extends State<_SettingsPage> {
       _document = widget.environment;
       _syncControllers();
     }
-    if (!_configurationDirty && oldWidget.configuration != widget.configuration) {
+    if (!_configurationDirty &&
+        oldWidget.configuration != widget.configuration) {
       _configuration = widget.configuration;
       _syncConfigControllers();
     }
@@ -852,7 +866,8 @@ class _SettingsPageState extends State<_SettingsPage> {
     _updating = false;
   }
 
-  String? _nullableText(String value) => value.trim().isEmpty ? null : value.trim();
+  String? _nullableText(String value) =>
+      value.trim().isEmpty ? null : value.trim();
 
   int? _nullablePort(String value) =>
       value.trim().isEmpty ? null : int.tryParse(value.trim());
@@ -877,7 +892,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         _nullablePort(_configApiPort.text) == null) {
       return 'SubDock API Port 必须是 1-65535 的整数';
     }
-    if (_metaPort.text.trim().isNotEmpty && _nullablePort(_metaPort.text) == null) {
+    if (_metaPort.text.trim().isNotEmpty &&
+        _nullablePort(_metaPort.text) == null) {
       return 'HTTP-META Port 必须是 1-65535 的整数';
     }
     try {
@@ -905,13 +921,15 @@ class _SettingsPageState extends State<_SettingsPage> {
     final issue = _configurationIssue;
     if (issue != null) return;
     final backend = _configuration.backend;
-    final externalCors = backend.corsAllowedOrigins != null &&
+    final externalCors =
+        backend.corsAllowedOrigins != null &&
         BackendEnvPolicy.externalOrigins(
           BackendEnvDocument.parse(
             '${BackendEnvPolicy.corsAllowedOrigins}=${backend.corsAllowedOrigins}',
           ),
         ).isNotEmpty;
-    final nonLoopback = backend.apiHost != null &&
+    final nonLoopback =
+        backend.apiHost != null &&
         backend.apiHost != 'localhost' &&
         backend.apiHost != '::1' &&
         !backend.apiHost!.startsWith('127.');
@@ -926,9 +944,8 @@ class _SettingsPageState extends State<_SettingsPage> {
     await widget.onSaveConfiguration(_configuration);
     if (!mounted) return;
     setState(() => _configurationDirty = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('SubDock 配置已保存；不会自动重启服务。')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('SubDock 配置已保存；不会自动重启服务。')));
   }
 
   void _updateRaw(String value) {
@@ -1125,7 +1142,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('覆盖合并模式'),
-          value: _configuration.backend.merge ??
+          value:
+              _configuration.backend.merge ??
               BackendEnvPolicy.isMergeEnabledFor(_document),
           onChanged: (value) => _updateConfiguration(
             backend: _configuration.backend.copyWith(merge: value),
@@ -1159,7 +1177,9 @@ class _SettingsPageState extends State<_SettingsPage> {
           controller: _metaHost,
           label: 'HTTP-META Host 覆盖',
           onChanged: (value) => _updateConfiguration(
-            httpMeta: _configuration.httpMeta.copyWith(host: _nullableText(value)),
+            httpMeta: _configuration.httpMeta.copyWith(
+              host: _nullableText(value),
+            ),
           ),
           onFollow: () => _updateConfiguration(
             httpMeta: _configuration.httpMeta.copyWith(host: null),
@@ -1286,7 +1306,10 @@ class _SettingsPageState extends State<_SettingsPage> {
         decoration: InputDecoration(
           labelText: label,
           helperText: following ? '当前跟随 ENV / 默认值' : 'SubDock 覆盖值',
-          suffixIcon: TextButton(onPressed: onFollow, child: const Text('跟随 ENV')),
+          suffixIcon: TextButton(
+            onPressed: onFollow,
+            child: const Text('跟随 ENV'),
+          ),
         ),
         onChanged: onChanged,
       ),

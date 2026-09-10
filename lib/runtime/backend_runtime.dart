@@ -36,14 +36,31 @@ class RuntimeState {
     required this.status,
     required this.changedAt,
     this.message,
+    this.httpMetaStatus = HttpMetaStatus.disabled,
+    this.httpMetaPort,
+    this.httpMetaVersion,
+    this.httpMetaMessage,
   });
 
   final RuntimeStatus status;
   final DateTime changedAt;
   final String? message;
+  final HttpMetaStatus httpMetaStatus;
+  final int? httpMetaPort;
+  final String? httpMetaVersion;
+  final String? httpMetaMessage;
 }
 
-enum RuntimeLogSource { stdout, stderr }
+enum HttpMetaStatus {
+  disabled,
+  unavailable,
+  starting,
+  running,
+  degraded,
+  stopped,
+}
+
+enum RuntimeLogSource { stdout, stderr, httpMetaStdout, httpMetaStderr }
 
 class RuntimeLog {
   const RuntimeLog({

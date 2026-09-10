@@ -52,6 +52,7 @@ jobs:
           tool/prepare_backend.sh
           tool/prepare_frontend.sh
           tool/prepare_runtime.sh linux-x64
+          tool/prepare_http_meta.sh linux-x64
 
       - name: Build and verify bundle
         run: |
@@ -141,6 +142,7 @@ jobs:
           tool/prepare_backend.sh
           tool/prepare_frontend.sh
           tool/prepare_runtime.sh windows-x64
+          tool/prepare_http_meta.sh windows-x64
 
       - name: Build and verify bundle
         shell: bash
@@ -200,6 +202,7 @@ jobs:
           tool/prepare_backend.sh
           tool/prepare_frontend.sh
           tool/prepare_runtime.sh "${{ matrix.runtime }}"
+          tool/prepare_http_meta.sh "${{ matrix.runtime }}"
 
       - name: Build and verify app
         env:
