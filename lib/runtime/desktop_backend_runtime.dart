@@ -5,6 +5,7 @@ import 'dart:io';
 import 'backend_runtime.dart';
 import 'runtime_directories.dart';
 import 'runtime_permissions.dart';
+import '../settings/backend_env.dart';
 import '../settings/subdock_config.dart';
 import '../update/component_metadata_store.dart';
 import '../update/component_resource_resolver.dart';
@@ -697,6 +698,12 @@ class DesktopBackendRuntime implements BackendRuntime {
     environment.addAll(<String, String>{
       'SUB_STORE_DATA_BASE_PATH': directories.data.path,
       'SUB_STORE_FRONTEND_PATH': frontendDirectory.path,
+      BackendEnvPolicy.metaFolder: Directory.fromUri(
+        _bundleDirectory.uri.resolve('data/http-meta/meta/'),
+      ).path,
+      BackendEnvPolicy.metaTempFolder: Directory.fromUri(
+        directories.data.uri.resolve('http-meta/'),
+      ).path,
     });
     return environment;
   }
