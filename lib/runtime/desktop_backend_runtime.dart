@@ -402,15 +402,17 @@ class DesktopBackendRuntime implements BackendRuntime {
     final client = _httpMetaClient ??= HttpClient()
       ..connectionTimeout = _httpRequestTimeout;
     try {
-      final request = await client.getUrl(
+      final request = await client.postUrl(
         Uri(
           scheme: 'http',
           host:
               _environmentValue('HOST') ?? InternetAddress.loopbackIPv4.address,
           port: _httpMetaPort ?? 9876,
-          path: '/test',
+          path: '/stats',
         ),
       );
+      request.headers.contentType = ContentType.json;
+      request.write('{}');
       final response = await request.close().timeout(_httpRequestTimeout);
       await response.drain<void>();
       return response.statusCode == HttpStatus.ok;
