@@ -8,12 +8,12 @@ output_dir="$repo_root/.subdock/http-meta/$target"
 work_dir=$(mktemp -d)
 trap 'rm -rf "$work_dir"' 0 HUP INT TERM
 
-http_meta_tag=$(subdock_resolve_tag "$SUBDOCK_HTTP_META_VERSION" \
-  https://github.com/xream/http-meta.git)
+http_meta_tag=$(subdock_resolve_release_tag "$SUBDOCK_HTTP_META_VERSION" xream/http-meta \
+  http-meta.bundle.js)
 curl --fail --location --retry 3 --retry-all-errors --output "$work_dir/http-meta.bundle.js" \
-  "https://raw.githubusercontent.com/xream/http-meta/$http_meta_tag/bundle.js"
+  "https://github.com/xream/http-meta/releases/download/$http_meta_tag/http-meta.bundle.js"
 curl --fail --location --retry 3 --retry-all-errors --output "$work_dir/tpl.yaml" \
-  "https://raw.githubusercontent.com/xream/http-meta/$http_meta_tag/meta/tpl.yaml"
+  "https://github.com/xream/http-meta/releases/download/$http_meta_tag/tpl.yaml"
 
 case "$target" in
   linux-x64) mihomo_asset="mihomo-linux-amd64-v1"; mihomo_archive=gz ;;
