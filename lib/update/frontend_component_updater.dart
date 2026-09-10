@@ -58,13 +58,18 @@ class FrontendComponentUpdater {
       await restrictDirectoryToCurrentUser(staged);
       await downloads.downloadVerified(release.assetNamed('dist.zip'), archive);
       await _extract(archive, extracted);
-      if (!await File.fromUri(extracted.uri.resolve('index.html')).exists()) {
+      final content = await File.fromUri(
+        extracted.uri.resolve('index.html'),
+      ).exists()
+          ? extracted
+          : Directory.fromUri(extracted.uri.resolve('dist/'));
+      if (!await File.fromUri(content.uri.resolve('index.html')).exists()) {
         throw const FormatException('Frontend archive has no index.html');
       }
 
       await candidate.parent.create(recursive: true);
       await restrictDirectoryToCurrentUser(candidate.parent);
-      await extracted.rename(candidate.path);
+      await content.rename(candidate.path);
       await restrictDirectoryToCurrentUser(candidate);
       final previous = prior.active ?? prior.baseline;
       await metadataStore.save(
@@ -153,6 +158,7 @@ class FrontendComponentUpdater {
       throw FormatException('Frontend archive path is invalid: $name');
     }
     final parts = name.split(RegExp(r'[/\\]'));
+    if (parts.last.isEmpty) parts.removeLast();
     if (parts.any((part) => part.isEmpty || part == '.' || part == '..')) {
       throw FormatException('Frontend archive path escapes destination: $name');
     }

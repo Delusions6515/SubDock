@@ -55,6 +55,20 @@ void main() {
     );
   });
 
+  test('accepts the dist root used by Frontend release archives', () async {
+    final fixture = await _fixture(distRoot: true);
+    addTearDown(fixture.dispose);
+
+    await fixture.updater.update(_release('2.32.0'));
+
+    expect(
+      await File(
+        '${fixture.directories.components.path}/frontend/2.32.0/index.html',
+      ).readAsString(),
+      'updated frontend',
+    );
+  });
+
   test(
     'restores the prior Frontend pointer when health verification fails',
     () async {
@@ -75,7 +89,11 @@ void main() {
   );
 }
 
-Future<_Fixture> _fixture({bool malicious = false, bool healthy = true}) async {
+Future<_Fixture> _fixture({
+  bool malicious = false,
+  bool distRoot = false,
+  bool healthy = true,
+}) async {
   final root = await Directory.systemTemp.createTemp(
     'subdock_frontend_update_',
   );
@@ -108,7 +126,7 @@ Future<_Fixture> _fixture({bool malicious = false, bool healthy = true}) async {
       componentsDirectory: directories.components,
       metadataStore: metadata,
     ),
-    downloads: _ZipDownloads(malicious: malicious),
+    downloads: _ZipDownloads(malicious: malicious, distRoot: distRoot),
   );
   return _Fixture(root, directories, metadata, runtime, updater);
 }
@@ -121,19 +139,25 @@ GithubRelease _release(String version) => GithubRelease(
 );
 
 class _ZipDownloads implements GithubReleaseDownloader {
-  _ZipDownloads({required this.malicious});
+  _ZipDownloads({required this.malicious, required this.distRoot});
 
   final bool malicious;
+  final bool distRoot;
 
   @override
   Future<void> downloadVerified(GithubReleaseAsset asset, File target) async {
-    final archive = Archive()
-      ..add(
-        ArchiveFile.string(
-          malicious ? '../outside.txt' : 'index.html',
-          'updated frontend',
-        ),
-      );
+    final archive = Archive();
+    if (distRoot) archive.add(ArchiveFile.directory('dist/'));
+    archive.add(
+      ArchiveFile.string(
+        malicious
+            ? '../outside.txt'
+            : distRoot
+            ? 'dist/index.html'
+            : 'index.html',
+        'updated frontend',
+      ),
+    );
     await target.parent.create(recursive: true);
     await target.writeAsBytes(ZipEncoder().encode(archive));
   }
