@@ -11,14 +11,16 @@ SubDock is a native shell that runs a packaged Sub-Store backend and embeds its 
 ### Stable Ownership Boundaries
 
 - **Runtime lifecycle**: Start in `lib/runtime/desktop_backend_runtime.dart`; keep `BackendRuntime`
-  platform-neutral and preserve process identity, serialized mutation, failure publication, and cleanup.
+  platform-neutral and preserve serialized Backend/HTTP-META mutation, process identity, failure
+  publication, optional-helper degradation, and targeted cleanup.
 - **Configuration**: Start in `lib/settings/subdock_config.dart` for the effective resolver,
   `backend_env*.dart` / `subdock_config_store.dart` for persistence, and `AppCoordinator` for activation.
   Preserve raw ENV text, schema validation, precedence, and SubDock-reserved paths.
 - **WebUI boundary**: Start in `lib/app/app.dart`, but keep endpoint selection in `AppCoordinator`.
   Preserve same-origin containment, external-browser handoff, download interception, and recovery UI.
-- **Packaged resources**: Treat `data/runtime`, `data/backend`, and `data/frontend` as the runtime
-  contract. Linux packaging owns this layout today; verify other platforms rather than assuming parity.
+- **Packaged resources**: Treat `data/runtime`, `data/backend`, `data/frontend`, and `data/http-meta`
+  as the runtime contract. Linux, macOS, and Windows packaging each own their architecture-specific
+  resource preparation and verification.
 
 ## 3. Core Behaviors & Patterns
 
@@ -47,8 +49,9 @@ SubDock is a native shell that runs a packaged Sub-Store backend and embeds its 
   speculative platform abstractions until a real mobile implementation requires them.
 - Edit localization inputs in `lib/l10n/app_zh.arb` and `l10n.yaml`, not `lib/l10n/generated/`. Treat
   platform plugin registrants as generated from dependency configuration, never as hand-edited source.
-- Resource preparation stages before replacement. Keep version selection centralized and preserve
-  checksum verification for Node and released Shoutrrr assets; `.subdock/` remains untracked output.
+- Resource preparation stages before replacement. Keep version selection centralized; verify Node and
+  released Shoutrrr assets by checksum and HTTP-META releases with their version marker; `.subdock/`
+  remains untracked output.
 
 ## 5. Working Agreements
 
