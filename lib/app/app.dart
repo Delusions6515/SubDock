@@ -920,19 +920,19 @@ class _SettingsPageState extends State<_SettingsPage> {
   Future<void> _saveConfiguration() async {
     final issue = _configurationIssue;
     if (issue != null) return;
-    final backend = _configuration.backend;
-    final externalCors =
-        backend.corsAllowedOrigins != null &&
-        BackendEnvPolicy.externalOrigins(
-          BackendEnvDocument.parse(
-            '${BackendEnvPolicy.corsAllowedOrigins}=${backend.corsAllowedOrigins}',
-          ),
-        ).isNotEmpty;
-    final nonLoopback =
-        backend.apiHost != null &&
-        backend.apiHost != 'localhost' &&
-        backend.apiHost != '::1' &&
-        !backend.apiHost!.startsWith('127.');
+    final effective = EffectiveRuntimeConfig.resolve(
+      systemEnvironment: Platform.environment,
+      backendEnvironment: widget.environment,
+      config: _configuration,
+    ).environment;
+    final effectiveDocument = BackendEnvDocument.parse(
+      '${BackendEnvPolicy.host}=${effective[BackendEnvPolicy.host]}\n'
+      '${BackendEnvPolicy.port}=${effective[BackendEnvPolicy.port]}\n'
+      '${BackendEnvPolicy.corsAllowedOrigins}=${effective[BackendEnvPolicy.corsAllowedOrigins]}',
+    );
+    final externalCors = BackendEnvPolicy.externalOrigins(effectiveDocument)
+        .isNotEmpty;
+    final nonLoopback = BackendEnvPolicy.hasNonLoopbackHost(effectiveDocument);
     if (externalCors &&
         !await _confirm('允许外部 origin 会使其能够访问 Backend API。是否继续保存？')) {
       return;

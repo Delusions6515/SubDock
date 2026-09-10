@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import '../runtime/backend_runtime.dart';
@@ -32,6 +33,8 @@ class AppCoordinator {
   BackendEnvDocument get environment => _environment;
   SubDockConfig get configuration => _configuration;
   String? get configurationError => _configurationError;
+  Map<String, String> get effectiveEnvironment =>
+      UnmodifiableMapView(_effectiveEnvironment);
 
   List<BackendEnvIssue> get environmentIssues =>
       BackendEnvPolicy.validate(_environment);
