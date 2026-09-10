@@ -1120,97 +1120,108 @@ class _SettingsPageState extends State<_SettingsPage> {
             httpMeta: _configuration.httpMeta.copyWith(enabled: value),
           ),
         ),
-        _overrideField(
-          controller: _configApiHost,
-          label: 'Backend API Host 覆盖',
-          onChanged: (value) => _updateConfigBackendField('host', value),
-          onFollow: () => _updateConfiguration(
-            backend: _configuration.backend.copyWith(apiHost: null),
-          ),
-          following: _configuration.backend.apiHost == null,
-        ),
-        _overrideField(
-          controller: _configApiPort,
-          label: 'Backend API Port 覆盖',
-          keyboardType: TextInputType.number,
-          onChanged: (value) => _updateConfigBackendField('port', value),
-          onFollow: () => _updateConfiguration(
-            backend: _configuration.backend.copyWith(apiPort: null),
-          ),
-          following: _configuration.backend.apiPort == null,
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('覆盖合并模式'),
-          value:
-              _configuration.backend.merge ??
-              BackendEnvPolicy.isMergeEnabledFor(_document),
-          onChanged: (value) => _updateConfiguration(
-            backend: _configuration.backend.copyWith(merge: value),
-          ),
-          secondary: TextButton(
-            onPressed: () => _updateConfiguration(
-              backend: _configuration.backend.copyWith(merge: null),
+        ExpansionTile(
+          title: const Text('高级 SubDock 覆盖'),
+          subtitle: const Text('覆盖 ENV 与默认值；通常无需修改'),
+          childrenPadding: const EdgeInsets.only(bottom: 12),
+          children: [
+            _overrideField(
+              controller: _configApiHost,
+              label: 'Backend API Host 覆盖',
+              onChanged: (value) => _updateConfigBackendField('host', value),
+              onFollow: () => _updateConfiguration(
+                backend: _configuration.backend.copyWith(apiHost: null),
+              ),
+              following: _configuration.backend.apiHost == null,
             ),
-            child: const Text('跟随 ENV'),
-          ),
-        ),
-        _overrideField(
-          controller: _configPath,
-          label: 'Frontend Backend Path 覆盖',
-          onChanged: (value) => _updateConfigBackendField('path', value),
-          onFollow: () => _updateConfiguration(
-            backend: _configuration.backend.copyWith(frontendBackendPath: null),
-          ),
-          following: _configuration.backend.frontendBackendPath == null,
-        ),
-        _overrideField(
-          controller: _configCors,
-          label: 'CORS Allowed Origins 覆盖',
-          onChanged: (value) => _updateConfigBackendField('cors', value),
-          onFollow: () => _updateConfiguration(
-            backend: _configuration.backend.copyWith(corsAllowedOrigins: null),
-          ),
-          following: _configuration.backend.corsAllowedOrigins == null,
-        ),
-        _overrideField(
-          controller: _metaHost,
-          label: 'HTTP-META Host 覆盖',
-          onChanged: (value) => _updateConfiguration(
-            httpMeta: _configuration.httpMeta.copyWith(
-              host: _nullableText(value),
+            _overrideField(
+              controller: _configApiPort,
+              label: 'Backend API Port 覆盖',
+              keyboardType: TextInputType.number,
+              onChanged: (value) => _updateConfigBackendField('port', value),
+              onFollow: () => _updateConfiguration(
+                backend: _configuration.backend.copyWith(apiPort: null),
+              ),
+              following: _configuration.backend.apiPort == null,
             ),
-          ),
-          onFollow: () => _updateConfiguration(
-            httpMeta: _configuration.httpMeta.copyWith(host: null),
-          ),
-          following: _configuration.httpMeta.host == null,
-        ),
-        _overrideField(
-          controller: _metaPort,
-          label: 'HTTP-META Port 覆盖',
-          keyboardType: TextInputType.number,
-          onChanged: (value) => _updateConfiguration(
-            httpMeta: _configuration.httpMeta.copyWith(
-              port: _nullablePort(value),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('覆盖合并模式'),
+              value:
+                  _configuration.backend.merge ??
+                  BackendEnvPolicy.isMergeEnabledFor(_document),
+              onChanged: (value) => _updateConfiguration(
+                backend: _configuration.backend.copyWith(merge: value),
+              ),
+              secondary: TextButton(
+                onPressed: () => _updateConfiguration(
+                  backend: _configuration.backend.copyWith(merge: null),
+                ),
+                child: const Text('跟随 ENV'),
+              ),
             ),
-          ),
-          onFollow: () => _updateConfiguration(
-            httpMeta: _configuration.httpMeta.copyWith(port: null),
-          ),
-          following: _configuration.httpMeta.port == null,
-        ),
-        if (configurationIssue != null)
-          Text(
-            configurationIssue,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
-        const SizedBox(height: 8),
-        FilledButton(
-          onPressed: configurationIssue == null && _configurationDirty
-              ? _saveConfiguration
-              : null,
-          child: const Text('保存 SubDock 配置'),
+            _overrideField(
+              controller: _configPath,
+              label: 'Frontend Backend Path 覆盖',
+              onChanged: (value) => _updateConfigBackendField('path', value),
+              onFollow: () => _updateConfiguration(
+                backend: _configuration.backend.copyWith(
+                  frontendBackendPath: null,
+                ),
+              ),
+              following: _configuration.backend.frontendBackendPath == null,
+            ),
+            _overrideField(
+              controller: _configCors,
+              label: 'CORS Allowed Origins 覆盖',
+              onChanged: (value) => _updateConfigBackendField('cors', value),
+              onFollow: () => _updateConfiguration(
+                backend: _configuration.backend.copyWith(
+                  corsAllowedOrigins: null,
+                ),
+              ),
+              following: _configuration.backend.corsAllowedOrigins == null,
+            ),
+            _overrideField(
+              controller: _metaHost,
+              label: 'HTTP-META Host 覆盖',
+              onChanged: (value) => _updateConfiguration(
+                httpMeta: _configuration.httpMeta.copyWith(
+                  host: _nullableText(value),
+                ),
+              ),
+              onFollow: () => _updateConfiguration(
+                httpMeta: _configuration.httpMeta.copyWith(host: null),
+              ),
+              following: _configuration.httpMeta.host == null,
+            ),
+            _overrideField(
+              controller: _metaPort,
+              label: 'HTTP-META Port 覆盖',
+              keyboardType: TextInputType.number,
+              onChanged: (value) => _updateConfiguration(
+                httpMeta: _configuration.httpMeta.copyWith(
+                  port: _nullablePort(value),
+                ),
+              ),
+              onFollow: () => _updateConfiguration(
+                httpMeta: _configuration.httpMeta.copyWith(port: null),
+              ),
+              following: _configuration.httpMeta.port == null,
+            ),
+            if (configurationIssue != null)
+              Text(
+                configurationIssue,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: configurationIssue == null && _configurationDirty
+                  ? _saveConfiguration
+                  : null,
+              child: const Text('保存 SubDock 配置'),
+            ),
+          ],
         ),
         const Divider(height: 40),
         Text('Backend 配置', style: Theme.of(context).textTheme.headlineSmall),
@@ -1244,28 +1255,27 @@ class _SettingsPageState extends State<_SettingsPage> {
           onChanged: (value) =>
               _updateField(BackendEnvPolicy.corsAllowedOrigins, value),
         ),
-        const SizedBox(height: 24),
-        Text('高级原始 ENV', style: Theme.of(context).textTheme.titleMedium),
-        TextField(
-          controller: _raw,
-          minLines: 8,
-          maxLines: 16,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-          onChanged: _updateRaw,
-        ),
-        if (issues.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          for (final issue in issues)
-            Text(
-              '${issue.line == null ? '' : '第 ${issue.line} 行：'}${issue.message}',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-        ],
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
+        ExpansionTile(
+          title: const Text('高级原始 ENV'),
+          subtitle: const Text('直接编辑完整 Backend 环境变量'),
+          childrenPadding: const EdgeInsets.only(bottom: 12),
           children: [
+            TextField(
+              controller: _raw,
+              minLines: 8,
+              maxLines: 16,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              onChanged: _updateRaw,
+            ),
+            if (issues.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final issue in issues)
+                Text(
+                  '${issue.line == null ? '' : '第 ${issue.line} 行：'}${issue.message}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+            ],
+            const SizedBox(height: 16),
             FilledButton(
               onPressed: issues.isEmpty && _dirty ? _save : null,
               child: Text(l10n.save),
