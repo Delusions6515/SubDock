@@ -265,7 +265,10 @@ class DesktopBackendRuntime implements BackendRuntime {
     _stopping = true;
     _emit(RuntimeStatus.stopping);
     try {
-      if (metaProcess != null) await _terminate(metaProcess);
+      if (metaProcess != null) {
+        await _stopOwnedHttpMetaChildren();
+        await _terminate(metaProcess);
+      }
       if (process != null) await _terminate(process);
       _closeHttpClient();
       _closeHttpMetaClient();
@@ -410,6 +413,44 @@ class DesktopBackendRuntime implements BackendRuntime {
       _httpMetaClient?.close(force: true);
       _httpMetaClient = null;
       return false;
+    }
+  }
+
+  Future<void> _stopOwnedHttpMetaChildren() async {
+    final file = File.fromUri(
+      directories.data.uri.resolve('http-meta/http-meta.json'),
+    );
+    if (!await file.exists()) return;
+    List<int> pids;
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      final processes = decoded is Map<String, dynamic>
+          ? decoded['processes']
+          : null;
+      if (processes is! Map<String, dynamic>) return;
+      pids = processes.keys.map(int.tryParse).whereType<int>().toList();
+    } on Object {
+      return;
+    }
+    if (pids.isEmpty) return;
+    final client = _httpMetaClient ??= HttpClient()
+      ..connectionTimeout = _httpRequestTimeout;
+    try {
+      final request = await client.postUrl(
+        Uri(
+          scheme: 'http',
+          host:
+              _environmentValue('HOST') ?? InternetAddress.loopbackIPv4.address,
+          port: _httpMetaPort ?? 9876,
+          path: '/stop',
+        ),
+      );
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'pid': pids}));
+      final response = await request.close().timeout(_httpRequestTimeout);
+      await response.drain<void>();
+    } on Object {
+      // The helper may already be unavailable; process cleanup remains targeted.
     }
   }
 
