@@ -327,6 +327,11 @@ class DesktopBackendRuntime implements BackendRuntime {
     _httpMetaPort = int.tryParse(_environmentValue('PORT') ?? '') ?? 9876;
     try {
       final resources = await _componentResources.resolveHttpMeta();
+      final tempDirectory = Directory.fromUri(
+        directories.data.uri.resolve('http-meta/'),
+      );
+      await tempDirectory.create(recursive: true);
+      await restrictDirectoryToCurrentUser(tempDirectory);
       await _verifyHttpMetaPortAvailable();
       final node = _runtimeNode;
       if (!await node.exists()) {
