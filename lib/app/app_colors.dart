@@ -22,8 +22,9 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.divider,
   });
 
-  /// Light value set. Values track the current teal-seeded scheme so light
-  /// appearance does not drift; only the naming changes this round.
+  /// Light value set. Hand-picked neutral-gray ladder with the teal accent
+  /// (direction A); `error` and `errorSurface` follow the seeded scheme's
+  /// error roles.
   static const AppColors light = AppColors(
     surfaceLowest: Color(0xFFF4F7F7),
     surfaceLow: Color(0xFFEDF0F0),

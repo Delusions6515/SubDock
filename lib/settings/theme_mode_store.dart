@@ -24,12 +24,8 @@ class ThemeModeStore {
     if (!await file.exists()) return null;
     try {
       final value = jsonDecode(await file.readAsString());
-      return switch (value) {
-        'system' => ThemeMode.system,
-        'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => null,
-      };
+      if (value is! String) return null;
+      return ThemeMode.values.byName(value);
     } on Object {
       // Corrupt or unreadable file degrades to follow-system.
       return null;
@@ -42,7 +38,7 @@ class ThemeModeStore {
     );
     try {
       await temporary.writeAsString(
-        '${const JsonEncoder.withIndent('  ').convert(_name(mode))}\n',
+        '${const JsonEncoder.withIndent('  ').convert(mode.name)}\n',
         encoding: utf8,
         flush: true,
       );
@@ -54,10 +50,4 @@ class ThemeModeStore {
       rethrow;
     }
   }
-
-  static String _name(ThemeMode mode) => switch (mode) {
-    ThemeMode.system => 'system',
-    ThemeMode.light => 'light',
-    ThemeMode.dark => 'dark',
-  };
 }

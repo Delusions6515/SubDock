@@ -1275,8 +1275,8 @@ class _ComponentCard extends StatelessWidget {
                 )
         : update!.isAvailable
         ? l10n.componentUpdateAvailable(
-            update!.currentVersion,
             update!.availableVersion,
+            update!.currentVersion,
             status?.previous ?? '-',
           )
         : l10n.componentUpToDate(

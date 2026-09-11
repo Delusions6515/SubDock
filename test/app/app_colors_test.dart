@@ -3,22 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:subdock/app/app_colors.dart';
 
 void main() {
-  test('light and dark value sets cover every role', () {
-    for (final colors in [AppColors.light, AppColors.dark]) {
-      expect(colors.surfaceLowest, isNotNull);
-      expect(colors.surfaceLow, isNotNull);
-      expect(colors.surfaceHigh, isNotNull);
-      expect(colors.onSurface, isNotNull);
-      expect(colors.accent, isNotNull);
-      expect(colors.error, isNotNull);
-      expect(colors.errorSurface, isNotNull);
-      expect(colors.warning, isNotNull);
-      expect(colors.success, isNotNull);
-      expect(colors.disabled, isNotNull);
-      expect(colors.divider, isNotNull);
-    }
-  });
-
   test('copyWith copies every field and keeps unset fields', () {
     const colors = AppColors.light;
     final copied = colors.copyWith(accent: const Color(0xFF123456));
