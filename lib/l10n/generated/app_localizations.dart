@@ -201,6 +201,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已崩溃'**
   String get crashed;
+
+  /// No description provided for @themeFollowSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get themeFollowSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色'**
+  String get themeDark;
+
+  /// No description provided for @themeTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'主题'**
+  String get themeTooltip;
 }
 
 class _AppLocalizationsDelegate

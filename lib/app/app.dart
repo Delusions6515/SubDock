@@ -12,9 +12,11 @@ import '../l10n/generated/app_localizations.dart';
 import '../runtime/backend_runtime.dart';
 import '../settings/backend_env.dart';
 import '../settings/subdock_config.dart';
+import '../settings/theme_mode_store.dart';
 import '../update/component_metadata_store.dart';
 import '../update/component_update_checker.dart';
 import '../update/component_update_service.dart';
+import 'app_colors.dart';
 import 'app_coordinator.dart';
 
 const navigationBreakpoint = 600.0;
@@ -32,6 +34,7 @@ class SubDockApp extends StatefulWidget {
     this.onMinimize,
     this.onToggleFullscreen,
     this.onCloseToTray,
+    this.themeModeStore,
   });
 
   final AppCoordinator coordinator;
@@ -42,6 +45,7 @@ class SubDockApp extends StatefulWidget {
   final Future<void> Function()? onMinimize;
   final Future<void> Function()? onToggleFullscreen;
   final Future<void> Function()? onCloseToTray;
+  final ThemeModeStore? themeModeStore;
 
   @override
   State<SubDockApp> createState() => _SubDockAppState();
@@ -57,6 +61,7 @@ class _SubDockAppState extends State<SubDockApp> {
   BackendInfo? _info;
   String? _error;
   var _actionInProgress = false;
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   void initState() {
@@ -71,6 +76,7 @@ class _SubDockAppState extends State<SubDockApp> {
     );
     widget.desktopWarning?.addListener(_onDesktopWarning);
     unawaited(_loadLogTail());
+    unawaited(_loadThemeMode());
     if (widget.autoStart) unawaited(_autoStart());
   }
 
@@ -86,6 +92,31 @@ class _SubDockAppState extends State<SubDockApp> {
   void _onDesktopWarning() {
     if (mounted) setState(() {});
   }
+
+  Future<void> _loadThemeMode() async {
+    final store = widget.themeModeStore;
+    if (store == null) return;
+    final mode = await store.load();
+    if (!mounted || mode == null) return;
+    setState(() => _themeMode = mode);
+  }
+
+  Future<void> _onThemeModeSelected(ThemeMode mode) async {
+    setState(() => _themeMode = mode);
+    final store = widget.themeModeStore;
+    if (store == null) return;
+    try {
+      await store.save(mode);
+    } catch (error) {
+      debugPrint('Failed to persist theme mode: $error');
+    }
+  }
+
+  static IconData _themeModeIcon(ThemeMode mode) => switch (mode) {
+        ThemeMode.system => Icons.brightness_auto,
+        ThemeMode.light => Icons.light_mode,
+        ThemeMode.dark => Icons.dark_mode,
+      };
 
   Future<void> _autoStart() async {
     try {
@@ -188,7 +219,17 @@ class _SubDockAppState extends State<SubDockApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
+        extensions: [AppColors.light],
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+        extensions: [AppColors.dark],
+      ),
+      themeMode: _themeMode,
       home: Builder(builder: _buildHome),
     );
   }
@@ -283,6 +324,28 @@ class _SubDockAppState extends State<SubDockApp> {
               onPressed: () => unawaited(widget.onCloseToTray!()),
               icon: const Icon(Icons.close),
             ),
+          PopupMenuButton<ThemeMode>(
+            tooltip: l10n.themeTooltip,
+            icon: Icon(_themeModeIcon(_themeMode)),
+            onSelected: (mode) => unawaited(_onThemeModeSelected(mode)),
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: ThemeMode.system,
+                checked: _themeMode == ThemeMode.system,
+                child: Text(l10n.themeFollowSystem),
+              ),
+              CheckedPopupMenuItem(
+                value: ThemeMode.light,
+                checked: _themeMode == ThemeMode.light,
+                child: Text(l10n.themeLight),
+              ),
+              CheckedPopupMenuItem(
+                value: ThemeMode.dark,
+                checked: _themeMode == ThemeMode.dark,
+                child: Text(l10n.themeDark),
+              ),
+            ],
+          ),
         ],
       ),
       body: Column(

@@ -12,6 +12,7 @@ import 'runtime/desktop_backend_runtime.dart';
 import 'runtime/runtime_directories.dart';
 import 'settings/backend_env_store.dart';
 import 'settings/subdock_config_store.dart';
+import 'settings/theme_mode_store.dart';
 import 'update/component_metadata_store.dart';
 import 'update/component_recovery.dart';
 import 'update/component_resource_resolver.dart';
@@ -86,6 +87,7 @@ Future<void> main() async {
       onMinimize: lifecycle.minimize,
       onToggleFullscreen: lifecycle.toggleFullscreen,
       onCloseToTray: lifecycle.closeToTray,
+      themeModeStore: ThemeModeStore(directories),
     ),
   );
 }

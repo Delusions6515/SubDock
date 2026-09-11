@@ -62,4 +62,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get crashed => '已崩溃';
+
+  @override
+  String get themeFollowSystem => '跟随系统';
+
+  @override
+  String get themeLight => '浅色';
+
+  @override
+  String get themeDark => '深色';
+
+  @override
+  String get themeTooltip => '主题';
 }
