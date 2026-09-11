@@ -236,6 +236,7 @@ class _SubDockAppState extends State<SubDockApp> {
 
   Widget _buildHome(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).extension<AppColors>()!;
     final destinations = <NavigationRailDestination>[
       NavigationRailDestination(
         icon: const Icon(Icons.dashboard_outlined),
@@ -353,9 +354,9 @@ class _SubDockAppState extends State<SubDockApp> {
           if (widget.desktopWarning?.value case final warning?)
             Container(
               width: double.infinity,
-              color: Theme.of(context).colorScheme.errorContainer,
+              color: colors.errorSurface,
               padding: const EdgeInsets.all(12),
-              child: Text(warning),
+              child: Text(warning, style: TextStyle(color: colors.error)),
             ),
           Expanded(
             child: LayoutBuilder(
@@ -624,6 +625,7 @@ class _ManagePageState extends State<_ManagePage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
     if (widget.state.status == RuntimeStatus.starting ||
         widget.state.status == RuntimeStatus.stopping) {
       return const Center(child: CircularProgressIndicator());
@@ -660,13 +662,16 @@ class _ManagePageState extends State<_ManagePage> {
           Align(
             alignment: Alignment.topCenter,
             child: Material(
-              color: Theme.of(context).colorScheme.errorContainer,
+              color: colors.errorSurface,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(_webViewError!),
+                    Text(
+                      _webViewError!,
+                      style: TextStyle(color: colors.error),
+                    ),
                     if (_missingWebView2)
                       TextButton(
                         onPressed: () => unawaited(_openWebView2Download()),
@@ -706,6 +711,7 @@ class _RuntimePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).extension<AppColors>()!;
     final label = switch (state.status) {
       RuntimeStatus.stopped => l10n.stopped,
       RuntimeStatus.starting => l10n.starting,
@@ -722,7 +728,7 @@ class _RuntimePage extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             message,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: TextStyle(color: colors.error),
           ),
         ],
         const SizedBox(height: 24),
@@ -1098,6 +1104,7 @@ class _SettingsPageState extends State<_SettingsPage> {
     final issues = BackendEnvPolicy.validate(_document);
     final configurationIssue = _configurationIssue;
     final l10n = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).extension<AppColors>()!;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -1105,7 +1112,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         if (widget.configurationError != null) ...[
           Text(
             '配置文件无效：${widget.configurationError}',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: TextStyle(color: colors.error),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
@@ -1127,7 +1134,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         if (configurationIssue != null)
           Text(
             configurationIssue,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: TextStyle(color: colors.error),
           ),
         FilledButton(
           onPressed: configurationIssue == null && _configurationDirty
@@ -1184,7 +1191,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               for (final issue in issues)
                 Text(
                   '${issue.line == null ? '' : '第 ${issue.line} 行：'}${issue.message}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: TextStyle(color: colors.error),
                 ),
             ],
             const SizedBox(height: 16),
@@ -1236,6 +1243,7 @@ class _ComponentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
     final name = kind == ComponentKind.backend ? 'Backend' : 'Frontend';
     final text = update == null
         ? status == null
@@ -1257,7 +1265,7 @@ class _ComponentCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: colors.error),
               ),
             ],
             const SizedBox(height: 12),

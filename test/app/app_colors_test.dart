@@ -39,4 +39,23 @@ void main() {
     expect(AppColors.light.lerp(AppColors.dark, 0), AppColors.light);
     expect(AppColors.light.lerp(AppColors.dark, 1), AppColors.dark);
   });
+
+  test('error foreground stays readable on the error surface (WCAG AA)', () {
+    for (final colors in [AppColors.light, AppColors.dark]) {
+      final ratio = _contrastRatio(colors.error, colors.errorSurface);
+      expect(
+        ratio,
+        greaterThanOrEqualTo(4.5),
+        reason: '${colors.error} on ${colors.errorSurface} gives $ratio:1',
+      );
+    }
+  });
+}
+
+double _contrastRatio(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final lighter = la > lb ? la : lb;
+  final darker = la > lb ? lb : la;
+  return (lighter + 0.05) / (darker + 0.05);
 }

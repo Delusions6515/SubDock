@@ -3,7 +3,14 @@ import 'dart:io';
 import 'dart:ui' show Size;
 
 import 'package:flutter/material.dart'
-    show FilledButton, NavigationBar, NavigationRail, OutlinedButton;
+    show
+        Brightness,
+        FilledButton,
+        NavigationBar,
+        NavigationRail,
+        OutlinedButton,
+        Theme,
+        ValueNotifier;
 import 'package:flutter/scheduler.dart' show AppLifecycleState;
 import 'package:flutter/widgets.dart' show Offstage, SizedBox, ValueKey;
 import 'package:flutter_test/flutter_test.dart';
@@ -174,6 +181,50 @@ void main() {
     expect(find.byType(NavigationRail), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+    'shell renders the four pages and the warning banner in dark mode',
+    (WidgetTester tester) async {
+      late Directory temp;
+      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+      final directories = await tester.runAsync(() async {
+        temp = await Directory.systemTemp.createTemp('subdock_widget_');
+        return RuntimeDirectories.fromBaseDirectory(temp);
+      });
+      final coordinator = AppCoordinator(
+        runtime: _FakeBackendRuntime(),
+        environmentStore: BackendEnvStore(directories!),
+      );
+      addTearDown(
+        () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+            Brightness.light,
+      );
+
+      tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.dark;
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+          desktopWarning: ValueNotifier<String>('演示模式'),
+        ),
+      );
+
+      // Following the system brightness, the shell applies the dark theme.
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        Brightness.dark,
+      );
+
+      for (final label in ['运行状态', '日志', '设置', '管理']) {
+        await tester.tap(find.text(label));
+        await tester.pump();
+        expect(tester.takeException(), isNull, reason: label);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }
 
 class _FakeBackendRuntime extends BackendRuntime {
