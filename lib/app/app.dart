@@ -194,7 +194,8 @@ class _SubDockAppState extends State<SubDockApp> {
   }
 
   Future<void> _saveEnvironment(BackendEnvDocument document) async {
-    if (_actionInProgress) throw StateError('已有操作正在进行');
+    final l10n = AppLocalizations.of(context)!;
+    if (_actionInProgress) throw StateError(l10n.operationInProgress);
     setState(() {
       _actionInProgress = true;
       _error = null;
@@ -309,19 +310,19 @@ class _SubDockAppState extends State<SubDockApp> {
         actions: [
           if (widget.onMinimize != null)
             IconButton(
-              tooltip: '最小化',
+              tooltip: l10n.minimizeTooltip,
               onPressed: () => unawaited(widget.onMinimize!()),
               icon: const Icon(Icons.minimize),
             ),
           if (widget.onToggleFullscreen != null)
             IconButton(
-              tooltip: '切换全屏',
+              tooltip: l10n.toggleFullscreenTooltip,
               onPressed: () => unawaited(widget.onToggleFullscreen!()),
               icon: const Icon(Icons.fullscreen),
             ),
           if (widget.onCloseToTray != null)
             IconButton(
-              tooltip: '关闭到托盘',
+              tooltip: l10n.closeToTrayTooltip,
               onPressed: () => unawaited(widget.onCloseToTray!()),
               icon: const Icon(Icons.close),
             ),
@@ -477,11 +478,10 @@ class _ManagePageState extends State<_ManagePage> {
       await controller.loadRequest(widget.coordinator.webUiUri);
     } catch (error) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         setState(() {
           _missingWebView2 = _isMissingWebView2(error);
-          _webViewError = _missingWebView2
-              ? '未检测到 Microsoft Edge WebView2 Runtime。请安装后重试。'
-              : '$error';
+          _webViewError = _missingWebView2 ? l10n.webView2Missing : '$error';
         });
       }
     }
@@ -490,6 +490,7 @@ class _ManagePageState extends State<_ManagePage> {
   Future<NavigationDecision> _onNavigationRequest(
     NavigationRequest request,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final uri = Uri.tryParse(request.url);
     if (uri == null) return NavigationDecision.prevent;
     if (_sameOrigin(uri, widget.coordinator.webUiUri)) {
@@ -502,7 +503,7 @@ class _ManagePageState extends State<_ManagePage> {
     if (uri.scheme == 'http' || uri.scheme == 'https') {
       try {
         if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-          throw StateError('系统浏览器无法打开 $uri');
+          throw StateError(l10n.openSystemBrowserFailed(uri.toString()));
         }
       } catch (error) {
         if (mounted) setState(() => _webViewError = '$error');
@@ -512,6 +513,7 @@ class _ManagePageState extends State<_ManagePage> {
   }
 
   Future<void> _saveHttpDownload(Uri uri) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final location = await getSaveLocation(
         suggestedName: _downloadName(uri.pathSegments.lastOrNull),
@@ -522,7 +524,10 @@ class _ManagePageState extends State<_ManagePage> {
       try {
         final response = await (await client.getUrl(uri)).close();
         if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw HttpException('下载失败：HTTP ${response.statusCode}', uri: uri);
+          throw HttpException(
+            l10n.downloadFailedHttp(response.statusCode),
+            uri: uri,
+          );
         }
         final sink = File(location.path).openWrite();
         try {
@@ -540,19 +545,20 @@ class _ManagePageState extends State<_ManagePage> {
   }
 
   Future<void> _saveBlob(String message) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final payload = jsonDecode(message);
       if (payload is! Map<String, dynamic>) {
-        throw const FormatException('Blob 导出数据格式无效');
+        throw FormatException(l10n.blobExportInvalid);
       }
       if (payload['error'] case final String error) throw StateError(error);
       final data = payload['data'];
       if (data is! String || data.length > (_maxBlobBytes * 4 ~/ 3) + 4) {
-        throw const FormatException('Blob 导出超过 16 MiB 限制');
+        throw FormatException(l10n.blobExportTooLarge);
       }
       final bytes = base64Decode(data);
       if (bytes.length > _maxBlobBytes) {
-        throw const FormatException('Blob 导出超过 16 MiB 限制');
+        throw FormatException(l10n.blobExportTooLarge);
       }
       final location = await getSaveLocation(
         suggestedName: _downloadName(payload['name'] as String?),
@@ -576,12 +582,13 @@ class _ManagePageState extends State<_ManagePage> {
   }
 
   Future<void> _openWebView2Download() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!await launchUrl(
       _webView2DownloadUri,
       mode: LaunchMode.externalApplication,
     )) {
       if (mounted) {
-        setState(() => _webViewError = '系统浏览器无法打开 WebView2 下载页面');
+        setState(() => _webViewError = l10n.openWebView2DownloadFailed);
       }
     }
   }
@@ -625,6 +632,7 @@ class _ManagePageState extends State<_ManagePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colors = Theme.of(context).extension<AppColors>()!;
     if (widget.state.status == RuntimeStatus.starting ||
         widget.state.status == RuntimeStatus.stopping) {
@@ -633,7 +641,7 @@ class _ManagePageState extends State<_ManagePage> {
     if (!_ready || _controller == null) {
       final reason = widget.coordinator.environmentIssues.isNotEmpty
           ? widget.coordinator.environmentIssues.first.message
-          : widget.error ?? widget.state.message ?? 'Backend 未运行';
+          : widget.error ?? widget.state.message ?? l10n.backendNotRunning;
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -647,7 +655,9 @@ class _ManagePageState extends State<_ManagePage> {
               FilledButton(
                 onPressed: widget.onRecover,
                 child: Text(
-                  widget.coordinator.canOpenWebUi ? '查看运行状态' : '修复配置',
+                  widget.coordinator.canOpenWebUi
+                      ? l10n.viewRuntimeStatus
+                      : l10n.fixConfiguration,
                 ),
               ),
             ],
@@ -675,7 +685,7 @@ class _ManagePageState extends State<_ManagePage> {
                     if (_missingWebView2)
                       TextButton(
                         onPressed: () => unawaited(_openWebView2Download()),
-                        child: const Text('打开 WebView2 官方下载页'),
+                        child: Text(l10n.openWebView2DownloadPage),
                       ),
                   ],
                 ),
@@ -738,15 +748,19 @@ class _RuntimePage extends StatelessWidget {
         _InfoRow(
           label: 'HTTP-META',
           value: switch (state.httpMetaStatus) {
-            HttpMetaStatus.disabled => '已禁用',
-            HttpMetaStatus.unavailable =>
-              '不可用${state.httpMetaMessage == null ? '' : '：${state.httpMetaMessage}'}',
-            HttpMetaStatus.starting => '启动中',
-            HttpMetaStatus.running =>
-              '运行中，端口 ${state.httpMetaPort ?? '-'}，版本 ${state.httpMetaVersion ?? '-'}',
-            HttpMetaStatus.degraded =>
-              '已降级${state.httpMetaMessage == null ? '' : '：${state.httpMetaMessage}'}',
-            HttpMetaStatus.stopped => '已停止',
+            HttpMetaStatus.disabled => l10n.httpMetaDisabled,
+            HttpMetaStatus.unavailable => state.httpMetaMessage == null
+                ? l10n.httpMetaUnavailable
+                : l10n.httpMetaUnavailableDetail(state.httpMetaMessage!),
+            HttpMetaStatus.starting => l10n.httpMetaStarting,
+            HttpMetaStatus.running => l10n.httpMetaRunning(
+              state.httpMetaPort ?? '-',
+              state.httpMetaVersion ?? '-',
+            ),
+            HttpMetaStatus.degraded => state.httpMetaMessage == null
+                ? l10n.httpMetaDegraded
+                : l10n.httpMetaDegradedDetail(state.httpMetaMessage!),
+            HttpMetaStatus.stopped => l10n.httpMetaStopped,
           },
         ),
         const SizedBox(height: 24),
@@ -792,7 +806,8 @@ class _LogsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (logs.isEmpty) return const Center(child: Text('暂无日志'));
+    final l10n = AppLocalizations.of(context)!;
+    if (logs.isEmpty) return Center(child: Text(l10n.noLogs));
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: logs.length,
@@ -928,6 +943,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 
   Future<void> _saveConfiguration() async {
+    final l10n = AppLocalizations.of(context)!;
     final issue = _configurationIssue;
     if (issue != null) return;
     final effective = EffectiveRuntimeConfig.resolve(
@@ -943,19 +959,13 @@ class _SettingsPageState extends State<_SettingsPage> {
     final externalCors = BackendEnvPolicy.externalOrigins(effectiveDocument)
         .isNotEmpty;
     final nonLoopback = BackendEnvPolicy.hasNonLoopbackHost(effectiveDocument);
-    if (externalCors &&
-        !await _confirm('允许外部 origin 会使其能够访问 Backend API。是否继续保存？')) {
-      return;
-    }
-    if (nonLoopback &&
-        !await _confirm('Backend 没有鉴权；非回环地址会让同一网络中的设备访问全部 API。是否继续保存？')) {
-      return;
-    }
+    if (externalCors && !await _confirm(l10n.confirmExternalCors)) return;
+    if (nonLoopback && !await _confirm(l10n.confirmNonLoopback)) return;
     await widget.onSaveConfiguration(_configuration);
     if (!mounted) return;
     setState(() => _configurationDirty = false);
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('SubDock 配置已保存；不会自动重启服务。')));
+        .showSnackBar(SnackBar(content: Text(l10n.configSavedNoRestart)));
   }
 
   void _updateRaw(String value) {
@@ -977,14 +987,15 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     final issues = BackendEnvPolicy.validate(_document);
     if (issues.isNotEmpty) return;
     if (BackendEnvPolicy.externalOrigins(_document).isNotEmpty &&
-        !await _confirm('允许外部 origin 会使其能够访问 Backend API。是否继续保存？')) {
+        !await _confirm(l10n.confirmExternalCors)) {
       return;
     }
     if (BackendEnvPolicy.hasNonLoopbackHost(_document) &&
-        !await _confirm('Backend 没有鉴权；非回环地址会让同一网络中的设备访问全部 API。是否继续保存？')) {
+        !await _confirm(l10n.confirmNonLoopback)) {
       return;
     }
     try {
@@ -996,30 +1007,35 @@ class _SettingsPageState extends State<_SettingsPage> {
     setState(() => _dirty = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('已保存；重启 Backend 后生效。'),
-        action: SnackBarAction(label: '立即重启', onPressed: widget.onRestart),
+        content: Text(l10n.savedRestartToApply),
+        action: SnackBarAction(
+          label: l10n.restartNow,
+          onPressed: widget.onRestart,
+        ),
       ),
     );
   }
 
-  Future<bool> _confirm(String message) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('继续'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  Future<bool> _confirm(String message) async {
+    final l10n = AppLocalizations.of(context)!;
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(l10n.continueAction),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
 
   Future<void> _checkComponent(ComponentKind kind) async {
     setState(() {
@@ -1048,6 +1064,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 
   Future<void> _applyComponent(ComponentUpdate update) async {
+    final l10n = AppLocalizations.of(context)!;
     final kind = update.kind;
     setState(() {
       _componentBusy.add(kind);
@@ -1062,7 +1079,7 @@ class _SettingsPageState extends State<_SettingsPage> {
             current: update.availableVersion,
             previous: update.currentVersion,
           );
-          _componentErrors[kind] = '已更新到 ${update.availableVersion}';
+          _componentErrors[kind] = l10n.componentUpdatedTo(update.availableVersion);
         });
       }
     } catch (error) {
@@ -1073,6 +1090,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   }
 
   Future<void> _rollbackComponent(ComponentKind kind) async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() {
       _componentBusy.add(kind);
       _componentErrors.remove(kind);
@@ -1085,11 +1103,11 @@ class _SettingsPageState extends State<_SettingsPage> {
           final previous = _componentStatuses[kind]?.current;
           if (previous != null) {
             _componentStatuses[kind] = ComponentVersionStatus(
-              current: _componentStatuses[kind]?.previous ?? '安装包版本',
+              current: _componentStatuses[kind]?.previous ?? l10n.componentPackageVersion,
               previous: previous,
             );
           }
-          _componentErrors[kind] = '已回滚到上一版本';
+          _componentErrors[kind] = l10n.componentRolledBack;
         });
       }
     } catch (error) {
@@ -1108,10 +1126,11 @@ class _SettingsPageState extends State<_SettingsPage> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('SubDock 配置', style: Theme.of(context).textTheme.headlineSmall),
+        Text(l10n.subdockConfigHeading,
+            style: Theme.of(context).textTheme.headlineSmall),
         if (widget.configurationError != null) ...[
           Text(
-            '配置文件无效：${widget.configurationError}',
+            l10n.configurationInvalid(widget.configurationError!),
             style: TextStyle(color: colors.error),
           ),
           const SizedBox(height: 8),
@@ -1119,13 +1138,13 @@ class _SettingsPageState extends State<_SettingsPage> {
             onPressed: _configurationDirty
                 ? null
                 : () => unawaited(widget.onResetConfiguration()),
-            child: const Text('重置 SubDock 配置'),
+            child: Text(l10n.resetSubdockConfig),
           ),
         ],
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('启用 HTTP-META'),
-          subtitle: const Text('辅助启动失败时 Backend 仍会继续运行'),
+          title: Text(l10n.enableHttpMeta),
+          subtitle: Text(l10n.enableHttpMetaSubtitle),
           value: _httpMetaEnabled,
           onChanged: (value) => _updateConfiguration(
             _configuration.httpMeta.copyWith(enabled: value),
@@ -1140,10 +1159,11 @@ class _SettingsPageState extends State<_SettingsPage> {
           onPressed: configurationIssue == null && _configurationDirty
               ? _saveConfiguration
               : null,
-          child: const Text('保存 SubDock 配置'),
+          child: Text(l10n.saveSubdockConfig),
         ),
         const Divider(height: 40),
-        Text('Backend 配置', style: Theme.of(context).textTheme.headlineSmall),
+        Text(l10n.backendConfigHeading,
+            style: Theme.of(context).textTheme.headlineSmall),
         TextField(
           controller: _host,
           decoration: const InputDecoration(labelText: 'API Host'),
@@ -1157,7 +1177,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('合并模式'),
+          title: Text(l10n.mergeMode),
           value: BackendEnvPolicy.isMergeEnabledFor(_document),
           onChanged: (value) =>
               _updateField(BackendEnvPolicy.merge, value ? 'true' : 'false'),
@@ -1175,8 +1195,8 @@ class _SettingsPageState extends State<_SettingsPage> {
               _updateField(BackendEnvPolicy.corsAllowedOrigins, value),
         ),
         ExpansionTile(
-          title: const Text('高级原始 ENV'),
-          subtitle: const Text('直接编辑完整 Backend 环境变量'),
+          title: Text(l10n.advancedRawEnv),
+          subtitle: Text(l10n.advancedRawEnvSubtitle),
           childrenPadding: const EdgeInsets.only(bottom: 12),
           children: [
             TextField(
@@ -1190,7 +1210,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               const SizedBox(height: 8),
               for (final issue in issues)
                 Text(
-                  '${issue.line == null ? '' : '第 ${issue.line} 行：'}${issue.message}',
+                  '${issue.line == null ? '' : l10n.lineNumber(issue.line!)}${issue.message}',
                   style: TextStyle(color: colors.error),
                 ),
             ],
@@ -1244,14 +1264,25 @@ class _ComponentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppColors>()!;
+    final l10n = AppLocalizations.of(context)!;
     final name = kind == ComponentKind.backend ? 'Backend' : 'Frontend';
     final text = update == null
         ? status == null
-              ? '正在读取已安装版本…'
-              : '当前 ${status!.current}，上一版 ${status!.previous ?? '-'}'
+              ? l10n.componentReadingVersion
+              : l10n.componentCurrentWithPrevious(
+                  status!.current,
+                  status!.previous ?? '-',
+                )
         : update!.isAvailable
-        ? '当前 ${update!.currentVersion}，可更新到 ${update!.availableVersion}，上一版 ${status?.previous ?? '-'}'
-        : '当前 ${update!.currentVersion} 已是最新版本，上一版 ${status?.previous ?? '-'}';
+        ? l10n.componentUpdateAvailable(
+            update!.currentVersion,
+            update!.availableVersion,
+            status?.previous ?? '-',
+          )
+        : l10n.componentUpToDate(
+            update!.currentVersion,
+            status?.previous ?? '-',
+          );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1275,17 +1306,17 @@ class _ComponentCard extends StatelessWidget {
               children: [
                 OutlinedButton(
                   onPressed: busy ? null : onCheck,
-                  child: const Text('检查更新'),
+                  child: Text(l10n.checkForUpdates),
                 ),
                 FilledButton(
                   onPressed: busy || update?.isAvailable != true
                       ? null
                       : onUpdate,
-                  child: const Text('更新'),
+                  child: Text(l10n.update),
                 ),
                 TextButton(
                   onPressed: busy ? null : onRollback,
-                  child: const Text('回滚'),
+                  child: Text(l10n.rollback),
                 ),
                 if (busy)
                   const SizedBox(

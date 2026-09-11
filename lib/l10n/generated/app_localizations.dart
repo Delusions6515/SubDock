@@ -225,6 +225,316 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'主题'**
   String get themeTooltip;
+
+  /// No description provided for @operationInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'已有操作正在进行'**
+  String get operationInProgress;
+
+  /// No description provided for @minimizeTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'最小化'**
+  String get minimizeTooltip;
+
+  /// No description provided for @toggleFullscreenTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换全屏'**
+  String get toggleFullscreenTooltip;
+
+  /// No description provided for @closeToTrayTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭到托盘'**
+  String get closeToTrayTooltip;
+
+  /// No description provided for @webView2Missing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到 Microsoft Edge WebView2 Runtime。请安装后重试。'**
+  String get webView2Missing;
+
+  /// No description provided for @openSystemBrowserFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统浏览器无法打开 {uri}'**
+  String openSystemBrowserFailed(Object uri);
+
+  /// No description provided for @downloadFailedHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败：HTTP {statusCode}'**
+  String downloadFailedHttp(Object statusCode);
+
+  /// No description provided for @blobExportInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'Blob 导出数据格式无效'**
+  String get blobExportInvalid;
+
+  /// No description provided for @blobExportTooLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'Blob 导出超过 16 MiB 限制'**
+  String get blobExportTooLarge;
+
+  /// No description provided for @openWebView2DownloadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统浏览器无法打开 WebView2 下载页面'**
+  String get openWebView2DownloadFailed;
+
+  /// No description provided for @backendNotRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'Backend 未运行'**
+  String get backendNotRunning;
+
+  /// No description provided for @viewRuntimeStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看运行状态'**
+  String get viewRuntimeStatus;
+
+  /// No description provided for @fixConfiguration.
+  ///
+  /// In zh, this message translates to:
+  /// **'修复配置'**
+  String get fixConfiguration;
+
+  /// No description provided for @openWebView2DownloadPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开 WebView2 官方下载页'**
+  String get openWebView2DownloadPage;
+
+  /// No description provided for @httpMetaDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已禁用'**
+  String get httpMetaDisabled;
+
+  /// No description provided for @httpMetaUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'不可用'**
+  String get httpMetaUnavailable;
+
+  /// No description provided for @httpMetaUnavailableDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'不可用：{message}'**
+  String httpMetaUnavailableDetail(Object message);
+
+  /// No description provided for @httpMetaStarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动中'**
+  String get httpMetaStarting;
+
+  /// No description provided for @httpMetaRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行中，端口 {port}，版本 {version}'**
+  String httpMetaRunning(Object port, Object version);
+
+  /// No description provided for @httpMetaDegraded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已降级'**
+  String get httpMetaDegraded;
+
+  /// No description provided for @httpMetaDegradedDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'已降级：{message}'**
+  String httpMetaDegradedDetail(Object message);
+
+  /// No description provided for @httpMetaStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已停止'**
+  String get httpMetaStopped;
+
+  /// No description provided for @noLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无日志'**
+  String get noLogs;
+
+  /// No description provided for @confirmExternalCors.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许外部 origin 会使其能够访问 Backend API。是否继续保存？'**
+  String get confirmExternalCors;
+
+  /// No description provided for @confirmNonLoopback.
+  ///
+  /// In zh, this message translates to:
+  /// **'Backend 没有鉴权；非回环地址会让同一网络中的设备访问全部 API。是否继续保存？'**
+  String get confirmNonLoopback;
+
+  /// No description provided for @configSavedNoRestart.
+  ///
+  /// In zh, this message translates to:
+  /// **'SubDock 配置已保存；不会自动重启服务。'**
+  String get configSavedNoRestart;
+
+  /// No description provided for @savedRestartToApply.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存；重启 Backend 后生效。'**
+  String get savedRestartToApply;
+
+  /// No description provided for @restartNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即重启'**
+  String get restartNow;
+
+  /// No description provided for @cancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get cancel;
+
+  /// No description provided for @continueAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续'**
+  String get continueAction;
+
+  /// No description provided for @componentUpdatedTo.
+  ///
+  /// In zh, this message translates to:
+  /// **'已更新到 {version}'**
+  String componentUpdatedTo(Object version);
+
+  /// No description provided for @componentPackageVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装包版本'**
+  String get componentPackageVersion;
+
+  /// No description provided for @componentRolledBack.
+  ///
+  /// In zh, this message translates to:
+  /// **'已回滚到上一版本'**
+  String get componentRolledBack;
+
+  /// No description provided for @componentReadingVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取已安装版本…'**
+  String get componentReadingVersion;
+
+  /// No description provided for @componentCurrentWithPrevious.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {current}，上一版 {previous}'**
+  String componentCurrentWithPrevious(Object current, Object previous);
+
+  /// No description provided for @componentUpdateAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {current}，可更新到 {available}，上一版 {previous}'**
+  String componentUpdateAvailable(
+    Object available,
+    Object current,
+    Object previous,
+  );
+
+  /// No description provided for @componentUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {current} 已是最新版本，上一版 {previous}'**
+  String componentUpToDate(Object current, Object previous);
+
+  /// No description provided for @subdockConfigHeading.
+  ///
+  /// In zh, this message translates to:
+  /// **'SubDock 配置'**
+  String get subdockConfigHeading;
+
+  /// No description provided for @configurationInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置文件无效：{error}'**
+  String configurationInvalid(Object error);
+
+  /// No description provided for @resetSubdockConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置 SubDock 配置'**
+  String get resetSubdockConfig;
+
+  /// No description provided for @enableHttpMeta.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 HTTP-META'**
+  String get enableHttpMeta;
+
+  /// No description provided for @enableHttpMetaSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'辅助启动失败时 Backend 仍会继续运行'**
+  String get enableHttpMetaSubtitle;
+
+  /// No description provided for @saveSubdockConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存 SubDock 配置'**
+  String get saveSubdockConfig;
+
+  /// No description provided for @backendConfigHeading.
+  ///
+  /// In zh, this message translates to:
+  /// **'Backend 配置'**
+  String get backendConfigHeading;
+
+  /// No description provided for @mergeMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并模式'**
+  String get mergeMode;
+
+  /// No description provided for @advancedRawEnv.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级原始 ENV'**
+  String get advancedRawEnv;
+
+  /// No description provided for @advancedRawEnvSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'直接编辑完整 Backend 环境变量'**
+  String get advancedRawEnvSubtitle;
+
+  /// No description provided for @lineNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {line} 行：'**
+  String lineNumber(Object line);
+
+  /// No description provided for @checkForUpdates.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新'**
+  String get checkForUpdates;
+
+  /// No description provided for @update.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新'**
+  String get update;
+
+  /// No description provided for @rollback.
+  ///
+  /// In zh, this message translates to:
+  /// **'回滚'**
+  String get rollback;
 }
 
 class _AppLocalizationsDelegate
