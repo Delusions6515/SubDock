@@ -5,11 +5,13 @@ import 'dart:ui' show Size;
 import 'package:flutter/material.dart'
     show
         Brightness,
+        CheckedPopupMenuItem,
         FilledButton,
         NavigationBar,
         NavigationRail,
         OutlinedButton,
         Theme,
+        ThemeMode,
         ValueNotifier;
 import 'package:flutter/scheduler.dart' show AppLifecycleState;
 import 'package:flutter/widgets.dart' show Offstage, SizedBox, ValueKey;
@@ -19,6 +21,7 @@ import 'package:subdock/app/app_coordinator.dart';
 import 'package:subdock/runtime/backend_runtime.dart';
 import 'package:subdock/runtime/runtime_directories.dart';
 import 'package:subdock/settings/backend_env_store.dart';
+import 'package:subdock/settings/theme_mode_store.dart';
 
 void main() {
   testWidgets('runtime controls the backend through its abstraction', (
@@ -225,6 +228,252 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('theme follows the system brightness when no preference is stored', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories!),
+    );
+    addTearDown(
+      () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.light,
+    );
+
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+      ),
+    );
+    expect(
+      Theme.of(tester.element(find.text('SubDock'))).brightness,
+      Brightness.dark,
+    );
+
+    // Tear down and rebuild fresh so MediaQuery reflects the new value.
+    await tester.pumpWidget(const SizedBox());
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.light;
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+      ),
+    );
+    expect(
+      Theme.of(tester.element(find.text('SubDock'))).brightness,
+      Brightness.light,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('selecting dark from the theme menu applies it immediately', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories!),
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+      ),
+    );
+
+    await tester.tap(find.byTooltip('主题'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<ThemeMode>, '深色'));
+    await tester.pumpAndSettle();
+
+    expect(
+      Theme.of(tester.element(find.text('SubDock'))).brightness,
+      Brightness.dark,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('restores a persisted dark preference on startup', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final store = ThemeModeStore(directories!);
+    await tester.runAsync(() => store.save(ThemeMode.dark));
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        themeModeStore: store,
+      ),
+    );
+    await _pumpRealIo(tester);
+
+    expect(
+      Theme.of(tester.element(find.text('SubDock'))).brightness,
+      Brightness.dark,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('changing the theme through the menu persists to the store', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final store = ThemeModeStore(directories!);
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        themeModeStore: store,
+      ),
+    );
+
+    await tester.tap(find.byTooltip('主题'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<ThemeMode>, '浅色'));
+    await tester.pumpAndSettle();
+
+    expect(
+      Theme.of(tester.element(find.text('SubDock'))).brightness,
+      Brightness.light,
+    );
+
+    await _pumpRealIo(tester);
+    expect(await tester.runAsync(() => store.load()), ThemeMode.light);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'without a themeModeStore the menu applies but does not persist',
+    (WidgetTester tester) async {
+      late Directory temp;
+      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+      final directories = await tester.runAsync(() async {
+        temp = await Directory.systemTemp.createTemp('subdock_widget_');
+        return RuntimeDirectories.fromBaseDirectory(temp);
+      });
+      final store = ThemeModeStore(directories!);
+      final coordinator = AppCoordinator(
+        runtime: _FakeBackendRuntime(),
+        environmentStore: BackendEnvStore(directories),
+      );
+
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+        ),
+      );
+
+      await tester.tap(find.byTooltip('主题'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(CheckedPopupMenuItem<ThemeMode>, '深色'));
+      await tester.pumpAndSettle();
+
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        Brightness.dark,
+      );
+      expect(await tester.runAsync(() => store.file.exists()), isFalse);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'a corrupt theme store file degrades to following the system',
+    (WidgetTester tester) async {
+      late Directory temp;
+      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+      final directories = await tester.runAsync(() async {
+        temp = await Directory.systemTemp.createTemp('subdock_widget_');
+        return RuntimeDirectories.fromBaseDirectory(temp);
+      });
+      final store = ThemeModeStore(directories!);
+      await tester.runAsync(() => store.file.writeAsString('{not json'));
+      final coordinator = AppCoordinator(
+        runtime: _FakeBackendRuntime(),
+        environmentStore: BackendEnvStore(directories),
+      );
+      addTearDown(
+        () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+            Brightness.light,
+      );
+
+      tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.dark;
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+          themeModeStore: store,
+        ),
+      );
+      await _pumpRealIo(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        Brightness.dark,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+}
+
+/// Interleaves real-async turns (letting dart:io completions arrive) with
+/// pumps (flushing the fake-async continuations those completions queue), so
+/// file I/O initiated inside the widget tree can finish under `testWidgets`.
+Future<void> _pumpRealIo(WidgetTester tester, {int turns = 40}) async {
+  for (var turn = 0; turn < turns; turn++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 20));
+  }
 }
 
 class _FakeBackendRuntime extends BackendRuntime {
