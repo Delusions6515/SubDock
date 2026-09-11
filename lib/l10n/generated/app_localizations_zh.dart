@@ -73,9 +73,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeDark => '深色';
 
   @override
-  String get themeTooltip => '主题';
-
-  @override
   String get operationInProgress => '已有操作正在进行';
 
   @override
@@ -245,6 +242,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String lineNumber(Object line) {
     return '第 $line 行：';
   }
+
+  @override
+  String get appearanceHeading => '外观';
 
   @override
   String get checkForUpdates => '检查更新';

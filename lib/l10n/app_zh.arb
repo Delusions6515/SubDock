@@ -21,7 +21,6 @@
   "themeFollowSystem": "跟随系统",
   "themeLight": "浅色",
   "themeDark": "深色",
-  "themeTooltip": "主题",
   "operationInProgress": "已有操作正在进行",
   "minimizeTooltip": "最小化",
   "toggleFullscreenTooltip": "切换全屏",
@@ -70,6 +69,7 @@
   "advancedRawEnv": "高级原始 ENV",
   "advancedRawEnvSubtitle": "直接编辑完整 Backend 环境变量",
   "lineNumber": "第 {line} 行：",
+  "appearanceHeading": "外观",
   "checkForUpdates": "检查更新",
   "update": "更新",
   "rollback": "回滚"

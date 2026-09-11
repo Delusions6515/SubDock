@@ -5,11 +5,11 @@ import 'dart:ui' show Size;
 import 'package:flutter/material.dart'
     show
         Brightness,
-        CheckedPopupMenuItem,
         FilledButton,
         NavigationBar,
         NavigationRail,
         OutlinedButton,
+        SegmentedButton,
         Theme,
         ThemeMode,
         ValueNotifier;
@@ -279,7 +279,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('selecting dark from the theme menu applies it immediately', (
+  testWidgets('selecting dark from the settings appearance section applies it', (
     WidgetTester tester,
   ) async {
     late Directory temp;
@@ -301,9 +301,14 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('主题'));
+    await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<ThemeMode>, '深色'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SegmentedButton<ThemeMode>),
+        matching: find.text('深色'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -346,7 +351,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('changing the theme through the menu persists to the store', (
+  testWidgets('changing the theme in settings persists to the store', (
     WidgetTester tester,
   ) async {
     late Directory temp;
@@ -370,9 +375,14 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('主题'));
+    await tester.tap(find.text('设置'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<ThemeMode>, '浅色'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SegmentedButton<ThemeMode>),
+        matching: find.text('浅色'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -386,7 +396,7 @@ void main() {
   });
 
   testWidgets(
-    'without a themeModeStore the menu applies but does not persist',
+    'without a themeModeStore the settings selector applies but does not persist',
     (WidgetTester tester) async {
       late Directory temp;
       addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
@@ -408,9 +418,14 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byTooltip('主题'));
+      await tester.tap(find.text('设置'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(CheckedPopupMenuItem<ThemeMode>, '深色'));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(SegmentedButton<ThemeMode>),
+          matching: find.text('深色'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(

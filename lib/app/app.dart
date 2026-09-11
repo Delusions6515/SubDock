@@ -112,12 +112,6 @@ class _SubDockAppState extends State<SubDockApp> {
     }
   }
 
-  static IconData _themeModeIcon(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => Icons.brightness_auto,
-        ThemeMode.light => Icons.light_mode,
-        ThemeMode.dark => Icons.dark_mode,
-      };
-
   Future<void> _autoStart() async {
     try {
       await widget.coordinator.start();
@@ -287,6 +281,8 @@ class _SubDockAppState extends State<SubDockApp> {
         configuration: widget.coordinator.configuration,
         configurationError: widget.coordinator.configurationError,
         coordinator: widget.coordinator,
+        themeMode: _themeMode,
+        onThemeModeSelected: (mode) => unawaited(_onThemeModeSelected(mode)),
         onSave: _saveEnvironment,
         onSaveConfiguration: (configuration) =>
             _run(() => widget.coordinator.saveConfiguration(configuration)),
@@ -326,28 +322,6 @@ class _SubDockAppState extends State<SubDockApp> {
               onPressed: () => unawaited(widget.onCloseToTray!()),
               icon: const Icon(Icons.close),
             ),
-          PopupMenuButton<ThemeMode>(
-            tooltip: l10n.themeTooltip,
-            icon: Icon(_themeModeIcon(_themeMode)),
-            onSelected: (mode) => unawaited(_onThemeModeSelected(mode)),
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem(
-                value: ThemeMode.system,
-                checked: _themeMode == ThemeMode.system,
-                child: Text(l10n.themeFollowSystem),
-              ),
-              CheckedPopupMenuItem(
-                value: ThemeMode.light,
-                checked: _themeMode == ThemeMode.light,
-                child: Text(l10n.themeLight),
-              ),
-              CheckedPopupMenuItem(
-                value: ThemeMode.dark,
-                checked: _themeMode == ThemeMode.dark,
-                child: Text(l10n.themeDark),
-              ),
-            ],
-          ),
         ],
       ),
       body: Column(
@@ -828,6 +802,8 @@ class _SettingsPage extends StatefulWidget {
     required this.configuration,
     required this.configurationError,
     required this.coordinator,
+    required this.themeMode,
+    required this.onThemeModeSelected,
     required this.onSave,
     required this.onSaveConfiguration,
     required this.onResetConfiguration,
@@ -838,6 +814,8 @@ class _SettingsPage extends StatefulWidget {
   final SubDockConfig configuration;
   final String? configurationError;
   final AppCoordinator coordinator;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeSelected;
   final Future<void> Function(BackendEnvDocument document) onSave;
   final Future<void> Function(SubDockConfig configuration) onSaveConfiguration;
   final Future<void> Function() onResetConfiguration;
@@ -1126,6 +1104,33 @@ class _SettingsPageState extends State<_SettingsPage> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        Text(
+          l10n.appearanceHeading,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        SegmentedButton<ThemeMode>(
+          segments: [
+            ButtonSegment(
+              value: ThemeMode.system,
+              icon: const Icon(Icons.brightness_auto),
+              label: Text(l10n.themeFollowSystem),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              icon: const Icon(Icons.light_mode),
+              label: Text(l10n.themeLight),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              icon: const Icon(Icons.dark_mode),
+              label: Text(l10n.themeDark),
+            ),
+          ],
+          selected: {widget.themeMode},
+          onSelectionChanged: (selection) =>
+              widget.onThemeModeSelected(selection.first),
+        ),
+        const SizedBox(height: 12),
         Text(l10n.subdockConfigHeading,
             style: Theme.of(context).textTheme.headlineSmall),
         if (widget.configurationError != null) ...[

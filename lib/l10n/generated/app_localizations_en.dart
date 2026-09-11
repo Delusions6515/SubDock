@@ -73,9 +73,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeDark => 'Dark';
 
   @override
-  String get themeTooltip => 'Theme';
-
-  @override
   String get operationInProgress => 'An operation is already in progress';
 
   @override
@@ -253,6 +250,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String lineNumber(Object line) {
     return 'Line $line:';
   }
+
+  @override
+  String get appearanceHeading => 'Appearance';
 
   @override
   String get checkForUpdates => 'Check for updates';

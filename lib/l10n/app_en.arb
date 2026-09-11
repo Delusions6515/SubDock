@@ -21,7 +21,6 @@
   "themeFollowSystem": "Follow system",
   "themeLight": "Light",
   "themeDark": "Dark",
-  "themeTooltip": "Theme",
   "operationInProgress": "An operation is already in progress",
   "minimizeTooltip": "Minimize",
   "toggleFullscreenTooltip": "Toggle fullscreen",
@@ -70,6 +69,7 @@
   "advancedRawEnv": "Advanced raw ENV",
   "advancedRawEnvSubtitle": "Edit the full Backend environment variables directly",
   "lineNumber": "Line {line}:",
+  "appearanceHeading": "Appearance",
   "checkForUpdates": "Check for updates",
   "update": "Update",
   "rollback": "Rollback"

@@ -224,12 +224,6 @@ abstract class AppLocalizations {
   /// **'深色'**
   String get themeDark;
 
-  /// No description provided for @themeTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'主题'**
-  String get themeTooltip;
-
   /// No description provided for @operationInProgress.
   ///
   /// In zh, this message translates to:
@@ -521,6 +515,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'第 {line} 行：'**
   String lineNumber(Object line);
+
+  /// No description provided for @appearanceHeading.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观'**
+  String get appearanceHeading;
 
   /// No description provided for @checkForUpdates.
   ///
