@@ -18,9 +18,6 @@ class BackendEnvStore {
   }
 
   Future<void> save(BackendEnvDocument document) async {
-    final issues = BackendEnvPolicy.validate(document);
-    if (issues.isNotEmpty) throw StateError(issues.first.message);
-
     final temporary = File(
       '${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp',
     );
