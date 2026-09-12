@@ -18,6 +18,7 @@ import '../update/component_update_checker.dart';
 import '../update/component_update_service.dart';
 import 'app_colors.dart';
 import 'app_coordinator.dart';
+import 'app_typography.dart';
 
 const navigationBreakpoint = 600.0;
 
@@ -214,7 +215,7 @@ class _SubDockAppState extends State<SubDockApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
-        extensions: [AppColors.light],
+        extensions: [AppColors.light, AppTypography.light],
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -222,7 +223,7 @@ class _SubDockAppState extends State<SubDockApp> {
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
-        extensions: [AppColors.dark],
+        extensions: [AppColors.dark, AppTypography.dark],
       ),
       themeMode: _themeMode,
       home: Builder(builder: _buildHome),
