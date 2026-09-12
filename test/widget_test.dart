@@ -680,6 +680,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _pumpRealIo(tester);
       expect(
         Theme.of(tester.element(find.text('SubDock'))).brightness,
         expected,
