@@ -695,6 +695,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'组件更新恢复失败：{detail}'**
   String configErrorRecoveryFailed(Object detail);
+
+  /// No description provided for @configErrorTrayUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统托盘不可用；关闭窗口会退出 SubDock。'**
+  String get configErrorTrayUnavailable;
+
+  /// No description provided for @trayShowWindow.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示窗口'**
+  String get trayShowWindow;
+
+  /// No description provided for @trayExit.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出'**
+  String get trayExit;
 }
 
 class _AppLocalizationsDelegate

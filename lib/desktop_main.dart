@@ -8,6 +8,7 @@ import 'package:windows_single_instance/windows_single_instance.dart';
 import 'app/app.dart';
 import 'app/app_coordinator.dart';
 import 'desktop_lifecycle.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'runtime/desktop_backend_runtime.dart';
 import 'runtime/runtime_directories.dart';
 import 'settings/backend_env_store.dart';
@@ -80,7 +81,21 @@ Future<void> main() async {
   } on StateError {
     // The settings page provides the recovery path for an invalid saved ENV.
   }
-  final lifecycle = DesktopLifecycle(onExit: coordinator.dispose);
+  final localeStore = LocalePreferenceStore(directories);
+  // The tray is built before the app loads its preference, so the resolver
+  // reads a mutable holder that the locale-change callback updates.
+  var currentLocale = const Locale('zh');
+  final lifecycle = DesktopLifecycle(
+    onExit: coordinator.dispose,
+    trayLabels: (key) {
+      final l10n = lookupAppLocalizations(currentLocale);
+      return switch (key) {
+        'show' => l10n.trayShowWindow,
+        'exit' => l10n.trayExit,
+        _ => key,
+      };
+    },
+  );
   await lifecycle.initialize();
   await windowManager.waitUntilReadyToShow(desktopWindowOptions(), _showWindow);
   runApp(
@@ -93,7 +108,12 @@ Future<void> main() async {
       onToggleFullscreen: lifecycle.toggleFullscreen,
       onCloseToTray: lifecycle.closeToTray,
       themeModeStore: ThemeModeStore(directories),
-      localeStore: LocalePreferenceStore(directories),
+      localeStore: localeStore,
+      onLocaleChanged: () async {
+        final language = await localeStore.load() ?? 'zh';
+        currentLocale = Locale(language);
+        await lifecycle.updateTray();
+      },
     ),
   );
 }

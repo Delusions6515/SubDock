@@ -5,14 +5,25 @@ import 'package:flutter/widgets.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'settings/config_error.dart';
+
+/// Resolves a tray menu label from its key in the current UI language.
+/// The menu is a native OS menu with no BuildContext, so the label text is
+/// produced by the caller (desktop_main) via a language callback.
+typedef TrayLabelResolver = String Function(String key);
+
 class DesktopLifecycle with WindowListener, TrayListener {
-  DesktopLifecycle({required this.onExit, Directory? bundleDirectory})
-    : _bundleDirectory =
+  DesktopLifecycle({
+    required this.onExit,
+    this.trayLabels,
+    Directory? bundleDirectory,
+  }) : _bundleDirectory =
           bundleDirectory ?? File(Platform.resolvedExecutable).parent;
 
   final Future<void> Function() onExit;
+  final TrayLabelResolver? trayLabels;
   final Directory _bundleDirectory;
-  final warning = ValueNotifier<String?>(null);
+  final warning = ValueNotifier<Object?>(null);
   var _trayReady = false;
   var _exiting = false;
 
@@ -30,19 +41,38 @@ class DesktopLifecycle with WindowListener, TrayListener {
       if (traySupportsToolTip(isLinux: Platform.isLinux)) {
         await trayManager.setToolTip('SubDock');
       }
-      await trayManager.setContextMenu(
-        Menu(
-          items: [
-            MenuItem(key: 'show', label: '显示窗口'),
-            MenuItem.separator(),
-            MenuItem(key: 'exit', label: '退出'),
-          ],
-        ),
-      );
+      await _updateContextMenu();
       _trayReady = true;
     } catch (_) {
-      warning.value = '系统托盘不可用；关闭窗口会退出 SubDock。';
+      warning.value = const AppConfigError(AppConfigErrorCode.trayUnavailable);
     }
+  }
+
+  /// Rebuilds the tray menu in the current language (KTD3). Safe to call
+  /// before the tray is ready; it simply records the pending label state.
+  Future<void> updateTray() async {
+    if (!_trayReady) return;
+    try {
+      await _updateContextMenu();
+    } catch (_) {
+      warning.value = const AppConfigError(AppConfigErrorCode.trayUnavailable);
+    }
+  }
+
+  Future<void> _updateContextMenu() {
+    final labels = trayLabels;
+    return trayManager.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(
+            key: 'show',
+            label: labels?.call('show') ?? 'Show window',
+          ),
+          MenuItem.separator(),
+          MenuItem(key: 'exit', label: labels?.call('exit') ?? 'Exit'),
+        ],
+      ),
+    );
   }
 
   Future<void> exit() async {

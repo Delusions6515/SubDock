@@ -362,4 +362,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String configErrorRecoveryFailed(Object detail) {
     return '组件更新恢复失败：$detail';
   }
+
+  @override
+  String get configErrorTrayUnavailable => '系统托盘不可用；关闭窗口会退出 SubDock。';
+
+  @override
+  String get trayShowWindow => '显示窗口';
+
+  @override
+  String get trayExit => '退出';
 }

@@ -98,5 +98,8 @@
   "configErrorMetadataInvalid": "Invalid component metadata",
   "configErrorStoreDisabled": "The SubDock configuration store is not enabled",
   "configErrorUpdaterDisabled": "The component updater is not enabled on this platform",
-  "configErrorRecoveryFailed": "Component update recovery failed: {detail}"
+  "configErrorRecoveryFailed": "Component update recovery failed: {detail}",
+  "configErrorTrayUnavailable": "System tray unavailable; closing the window exits SubDock.",
+  "trayShowWindow": "Show window",
+  "trayExit": "Exit"
 }

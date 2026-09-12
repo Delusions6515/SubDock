@@ -47,7 +47,7 @@ class SubDockApp extends StatefulWidget {
   final bool autoStart;
   final bool enableWebView;
   final Object? initialError;
-  final ValueListenable<String?>? desktopWarning;
+  final ValueListenable<Object?>? desktopWarning;
   final Future<void> Function()? onMinimize;
   final Future<void> Function()? onToggleFullscreen;
   final Future<void> Function()? onCloseToTray;
@@ -371,7 +371,10 @@ class _SubDockAppState extends State<SubDockApp> {
               width: double.infinity,
               color: colors.errorSurface,
               padding: const EdgeInsets.all(12),
-              child: Text(warning, style: TextStyle(color: colors.error)),
+              child: Text(
+                _localizedError(l10n, warning),
+                style: TextStyle(color: colors.error),
+              ),
             ),
           Expanded(
             child: LayoutBuilder(
@@ -1469,6 +1472,7 @@ String _localizedConfigError(AppLocalizations l10n, AppConfigError error) {
       l10n,
       error.issue!,
     ),
+    AppConfigErrorCode.trayUnavailable => l10n.configErrorTrayUnavailable,
   };
 }
 

@@ -98,5 +98,8 @@
   "configErrorMetadataInvalid": "组件元数据无效",
   "configErrorStoreDisabled": "SubDock 配置存储尚未启用",
   "configErrorUpdaterDisabled": "组件更新器尚未在当前平台启用",
-  "configErrorRecoveryFailed": "组件更新恢复失败：{detail}"
+  "configErrorRecoveryFailed": "组件更新恢复失败：{detail}",
+  "configErrorTrayUnavailable": "系统托盘不可用；关闭窗口会退出 SubDock。",
+  "trayShowWindow": "显示窗口",
+  "trayExit": "退出"
 }

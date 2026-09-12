@@ -374,4 +374,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String configErrorRecoveryFailed(Object detail) {
     return 'Component update recovery failed: $detail';
   }
+
+  @override
+  String get configErrorTrayUnavailable =>
+      'System tray unavailable; closing the window exits SubDock.';
+
+  @override
+  String get trayShowWindow => 'Show window';
+
+  @override
+  String get trayExit => 'Exit';
 }
