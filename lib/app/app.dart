@@ -79,6 +79,7 @@ class _SubDockAppState extends State<SubDockApp> {
   Object? _error;
   var _actionInProgress = false;
   ThemeMode _themeMode = ThemeMode.system;
+  Future<void> _themeSaveQueue = Future<void>.value();
   Locale? _localeOverride;
 
   @override
@@ -125,11 +126,14 @@ class _SubDockAppState extends State<SubDockApp> {
     setState(() => _themeMode = mode);
     final store = widget.themeModeStore;
     if (store == null) return;
-    try {
-      await store.save(mode);
-    } catch (error) {
-      debugPrint('Failed to persist theme mode: $error');
-    }
+    _themeSaveQueue = _themeSaveQueue.then((_) async {
+      try {
+        await store.save(mode);
+      } catch (error) {
+        debugPrint('Failed to persist theme mode: $error');
+      }
+    });
+    await _themeSaveQueue;
   }
 
   Future<void> _loadLocalePreference() async {
