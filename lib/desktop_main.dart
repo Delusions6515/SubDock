@@ -86,7 +86,10 @@ Future<void> main() async {
   // reads a mutable holder that the locale-change callback updates. Resolve
   // the persisted preference here so a saved en preference shows in the tray
   // on the very first launch, not only after a manual change.
-  var currentLocale = Locale((await localeStore.load()) ?? 'zh');
+  var currentLocale = resolveEffectiveLocale(
+    await localeStore.load(),
+    WidgetsBinding.instance.platformDispatcher.locales,
+  );
   final lifecycle = DesktopLifecycle(
     onExit: coordinator.dispose,
     trayLabels: (item) {
@@ -111,10 +114,24 @@ Future<void> main() async {
       themeModeStore: ThemeModeStore(directories),
       localeStore: localeStore,
       onLocaleChanged: (locale) async {
-        currentLocale = locale ?? const Locale('zh');
+        currentLocale = resolveEffectiveLocale(
+          locale?.languageCode,
+          WidgetsBinding.instance.platformDispatcher.locales,
+        );
         await lifecycle.updateTray();
       },
     ),
+  );
+}
+
+Locale resolveEffectiveLocale(
+  String? languageCode,
+  List<Locale> systemLocales,
+) {
+  if (languageCode != null) return Locale(languageCode);
+  return basicLocaleListResolution(
+    systemLocales,
+    AppLocalizations.supportedLocales,
   );
 }
 

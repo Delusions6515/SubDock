@@ -240,97 +240,99 @@ void main() {
     },
   );
 
-  testWidgets('theme follows the system brightness when no preference is stored', (
-    WidgetTester tester,
-  ) async {
-    late Directory temp;
-    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
-    final directories = await tester.runAsync(() async {
-      temp = await Directory.systemTemp.createTemp('subdock_widget_');
-      return RuntimeDirectories.fromBaseDirectory(temp);
-    });
-    final coordinator = AppCoordinator(
-      runtime: _FakeBackendRuntime(),
-      environmentStore: BackendEnvStore(directories!),
-    );
-    addTearDown(
-      () => tester.binding.platformDispatcher.platformBrightnessTestValue =
-          Brightness.light,
-    );
+  testWidgets(
+    'theme follows the system brightness when no preference is stored',
+    (WidgetTester tester) async {
+      late Directory temp;
+      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+      final directories = await tester.runAsync(() async {
+        temp = await Directory.systemTemp.createTemp('subdock_widget_');
+        return RuntimeDirectories.fromBaseDirectory(temp);
+      });
+      final coordinator = AppCoordinator(
+        runtime: _FakeBackendRuntime(),
+        environmentStore: BackendEnvStore(directories!),
+      );
+      addTearDown(
+        () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+            Brightness.light,
+      );
 
-    tester.binding.platformDispatcher.platformBrightnessTestValue =
-        Brightness.dark;
-    await tester.pumpWidget(
-      SubDockApp(
-        coordinator: coordinator,
-        autoStart: false,
-        enableWebView: false,
-        locale: const Locale('zh'),
-      ),
-    );
-    expect(
-      Theme.of(tester.element(find.text('SubDock'))).brightness,
-      Brightness.dark,
-    );
+      tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.dark;
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+          locale: const Locale('zh'),
+        ),
+      );
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        Brightness.dark,
+      );
 
-    // Tear down and rebuild fresh so MediaQuery reflects the new value.
-    await tester.pumpWidget(const SizedBox());
-    tester.binding.platformDispatcher.platformBrightnessTestValue =
-        Brightness.light;
-    await tester.pumpWidget(
-      SubDockApp(
-        coordinator: coordinator,
-        autoStart: false,
-        enableWebView: false,
-        locale: const Locale('zh'),
-      ),
-    );
-    expect(
-      Theme.of(tester.element(find.text('SubDock'))).brightness,
-      Brightness.light,
-    );
-    await tester.pumpWidget(const SizedBox());
-  });
+      // Tear down and rebuild fresh so MediaQuery reflects the new value.
+      await tester.pumpWidget(const SizedBox());
+      tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.light;
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+          locale: const Locale('zh'),
+        ),
+      );
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        Brightness.light,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
-  testWidgets('selecting dark from the settings appearance section applies it', (
-    WidgetTester tester,
-  ) async {
-    late Directory temp;
-    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
-    final directories = await tester.runAsync(() async {
-      temp = await Directory.systemTemp.createTemp('subdock_widget_');
-      return RuntimeDirectories.fromBaseDirectory(temp);
-    });
-    final coordinator = AppCoordinator(
-      runtime: _FakeBackendRuntime(),
-      environmentStore: BackendEnvStore(directories!),
-    );
+  testWidgets(
+    'selecting dark from the settings appearance section applies it',
+    (WidgetTester tester) async {
+      late Directory temp;
+      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+      final directories = await tester.runAsync(() async {
+        temp = await Directory.systemTemp.createTemp('subdock_widget_');
+        return RuntimeDirectories.fromBaseDirectory(temp);
+      });
+      final coordinator = AppCoordinator(
+        runtime: _FakeBackendRuntime(),
+        environmentStore: BackendEnvStore(directories!),
+      );
 
-    await tester.pumpWidget(
-      SubDockApp(
-        coordinator: coordinator,
-        autoStart: false,
-        enableWebView: false,
-        locale: const Locale('zh'),
-      ),
-    );
+      await tester.pumpWidget(
+        SubDockApp(
+          coordinator: coordinator,
+          autoStart: false,
+          enableWebView: false,
+          locale: const Locale('zh'),
+        ),
+      );
 
-    await tester.tap(find.text('设置'));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(SegmentedButton<ThemeMode>),
-        matching: find.text('深色'),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('设置'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(SegmentedButton<ThemeMode>),
+          matching: find.text('深色'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-      Theme.of(tester.element(find.text('SubDock'))).brightness,
-      Brightness.dark,
-    );
-    await tester.pumpWidget(const SizedBox());
-  });
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        Brightness.dark,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('restores a persisted dark preference on startup', (
     WidgetTester tester,
@@ -454,47 +456,46 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a corrupt theme store file degrades to following the system',
-    (WidgetTester tester) async {
-      late Directory temp;
-      addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
-      final directories = await tester.runAsync(() async {
-        temp = await Directory.systemTemp.createTemp('subdock_widget_');
-        return RuntimeDirectories.fromBaseDirectory(temp);
-      });
-      final store = ThemeModeStore(directories!);
-      await tester.runAsync(() => store.file.writeAsString('{not json'));
-      final coordinator = AppCoordinator(
-        runtime: _FakeBackendRuntime(),
-        environmentStore: BackendEnvStore(directories),
-      );
-      addTearDown(
-        () => tester.binding.platformDispatcher.platformBrightnessTestValue =
-            Brightness.light,
-      );
+  testWidgets('a corrupt theme store file degrades to following the system', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final store = ThemeModeStore(directories!);
+    await tester.runAsync(() => store.file.writeAsString('{not json'));
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+    addTearDown(
+      () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.light,
+    );
 
-      tester.binding.platformDispatcher.platformBrightnessTestValue =
-          Brightness.dark;
-      await tester.pumpWidget(
-        SubDockApp(
-          coordinator: coordinator,
-          autoStart: false,
-          enableWebView: false,
-          themeModeStore: store,
-          locale: const Locale('zh'),
-        ),
-      );
-      await _pumpRealIo(tester);
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        themeModeStore: store,
+        locale: const Locale('zh'),
+      ),
+    );
+    await _pumpRealIo(tester);
 
-      expect(tester.takeException(), isNull);
-      expect(
-        Theme.of(tester.element(find.text('SubDock'))).brightness,
-        Brightness.dark,
-      );
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(
+      Theme.of(tester.element(find.text('SubDock'))).brightness,
+      Brightness.dark,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('renders the shell in English when en is selected', (
     WidgetTester tester,
@@ -563,10 +564,7 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
     await _pumpRealIo(tester);
-    expect(
-      await tester.runAsync(() => localeStore.load()),
-      'en',
-    );
+    expect(await tester.runAsync(() => localeStore.load()), 'en');
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -615,6 +613,8 @@ void main() {
       runtime: _FakeBackendRuntime(),
       environmentStore: BackendEnvStore(directories),
     );
+    tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+    addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
     addTearDown(
       () => tester.binding.platformDispatcher.platformBrightnessTestValue =
           Brightness.light,
@@ -625,14 +625,13 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
-        locale: const Locale('zh'),
         localeStore: localeStore,
       ),
     );
     await _pumpRealIo(tester);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('设置'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
