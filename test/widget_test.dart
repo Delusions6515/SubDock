@@ -5,6 +5,7 @@ import 'dart:ui' show Size;
 import 'package:flutter/material.dart'
     show
         Brightness,
+        DropdownButton,
         FilledButton,
         Locale,
         NavigationBar,
@@ -22,6 +23,7 @@ import 'package:subdock/app/app_coordinator.dart';
 import 'package:subdock/runtime/backend_runtime.dart';
 import 'package:subdock/runtime/runtime_directories.dart';
 import 'package:subdock/settings/backend_env_store.dart';
+import 'package:subdock/settings/locale_preference_store.dart';
 import 'package:subdock/settings/theme_mode_store.dart';
 
 void main() {
@@ -490,6 +492,203 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('renders the shell in English when en is selected', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories!),
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        locale: const Locale('en'),
+      ),
+    );
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Runtime Status'), findsOneWidget);
+    expect(find.text('Logs'), findsOneWidget);
+    expect(find.text('Manage'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('switching the language applies and persists it', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final localeStore = LocalePreferenceStore(directories!);
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        locale: const Locale('zh'),
+        localeStore: localeStore,
+      ),
+    );
+    expect(find.text('设置'), findsOneWidget);
+
+    // Open settings and switch the language dropdown to English.
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Appearance'), findsOneWidget);
+    await _pumpRealIo(tester);
+    expect(
+      await tester.runAsync(() => localeStore.load()),
+      'en',
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('restores a persisted English preference on startup', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final localeStore = LocalePreferenceStore(directories!);
+    await tester.runAsync(() => localeStore.save('en'));
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        localeStore: localeStore,
+      ),
+    );
+    await _pumpRealIo(tester);
+
+    expect(find.text('Settings'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a corrupt locale store degrades to the system language', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final localeStore = LocalePreferenceStore(directories!);
+    await tester.runAsync(() => localeStore.file.writeAsString('{not json'));
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+    addTearDown(
+      () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.light,
+    );
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        locale: const Locale('zh'),
+        localeStore: localeStore,
+      ),
+    );
+    await _pumpRealIo(tester);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('设置'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('theme selector round-trips through all three modes', (
+    WidgetTester tester,
+  ) async {
+    late Directory temp;
+    addTearDown(() => tester.runAsync(() => temp.delete(recursive: true)));
+    final directories = await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('subdock_widget_');
+      return RuntimeDirectories.fromBaseDirectory(temp);
+    });
+    final store = ThemeModeStore(directories!);
+    final coordinator = AppCoordinator(
+      runtime: _FakeBackendRuntime(),
+      environmentStore: BackendEnvStore(directories),
+    );
+    addTearDown(
+      () => tester.binding.platformDispatcher.platformBrightnessTestValue =
+          Brightness.light,
+    );
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+
+    await tester.pumpWidget(
+      SubDockApp(
+        coordinator: coordinator,
+        autoStart: false,
+        enableWebView: false,
+        themeModeStore: store,
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+
+    Future<void> selectTheme(String label, Brightness expected) async {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(SegmentedButton<ThemeMode>),
+          matching: find.text(label),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        Theme.of(tester.element(find.text('SubDock'))).brightness,
+        expected,
+      );
+    }
+
+    await selectTheme('浅色', Brightness.light);
+    await selectTheme('深色', Brightness.dark);
+    // Following the system (which is dark in this test) after manual picks.
+    await selectTheme('跟随系统', Brightness.dark);
+
+    await _pumpRealIo(tester);
+    expect(await tester.runAsync(() => store.load()), ThemeMode.system);
+    await tester.pumpWidget(const SizedBox());
+  });
 }
 
 /// Interleaves real-async turns (letting dart:io completions arrive) with

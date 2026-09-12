@@ -1179,23 +1179,25 @@ class _SettingsPageState extends State<_SettingsPage> {
               widget.onThemeModeSelected(selection.first),
         ),
         SizedBox(height: typography.spacingMd),
-        DropdownButton<Locale?>(
-          value: widget.localeOverride,
+        DropdownButton<String>(
+          value: widget.localeOverride?.languageCode ?? 'system',
           items: [
-            DropdownMenuItem<Locale?>(
-              value: null,
+            DropdownMenuItem<String>(
+              value: 'system',
               child: Text(l10n.languageFollowSystem),
             ),
-            const DropdownMenuItem<Locale?>(
-              value: Locale('zh'),
+            const DropdownMenuItem<String>(
+              value: 'zh',
               child: Text('中文'),
             ),
-            const DropdownMenuItem<Locale?>(
-              value: Locale('en'),
+            const DropdownMenuItem<String>(
+              value: 'en',
               child: Text('English'),
             ),
           ],
-          onChanged: widget.onLocaleSelected,
+          onChanged: (value) => widget.onLocaleSelected(
+            value == null || value == 'system' ? null : Locale(value),
+          ),
         ),
         const Divider(height: 40),
         Text(l10n.subdockConfigHeading, style: heading),
