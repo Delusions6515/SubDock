@@ -7,10 +7,13 @@ import 'package:window_manager/window_manager.dart';
 
 import 'settings/config_error.dart';
 
-/// Resolves a tray menu label from its key in the current UI language.
+/// The tray menu items whose labels depend on the UI language.
+enum TrayItem { show, exit }
+
+/// Resolves a tray menu label from its [TrayItem] in the current UI language.
 /// The menu is a native OS menu with no BuildContext, so the label text is
 /// produced by the caller (desktop_main) via a language callback.
-typedef TrayLabelResolver = String Function(String key);
+typedef TrayLabelResolver = String Function(TrayItem item);
 
 class DesktopLifecycle with WindowListener, TrayListener {
   DesktopLifecycle({
@@ -65,11 +68,14 @@ class DesktopLifecycle with WindowListener, TrayListener {
       Menu(
         items: [
           MenuItem(
-            key: 'show',
-            label: labels?.call('show') ?? 'Show window',
+            key: TrayItem.show.name,
+            label: labels?.call(TrayItem.show) ?? 'Show window',
           ),
           MenuItem.separator(),
-          MenuItem(key: 'exit', label: labels?.call('exit') ?? 'Exit'),
+          MenuItem(
+            key: TrayItem.exit.name,
+            label: labels?.call(TrayItem.exit) ?? 'Exit',
+          ),
         ],
       ),
     );

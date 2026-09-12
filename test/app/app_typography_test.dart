@@ -4,22 +4,8 @@ import 'package:subdock/app/app_typography.dart';
 
 void main() {
   test('light and dark share the same metric values', () {
-    expect(AppTypography.light.titleLarge, AppTypography.dark.titleLarge);
-    expect(AppTypography.light.titleMedium, AppTypography.dark.titleMedium);
-    expect(AppTypography.light.titleSmall, AppTypography.dark.titleSmall);
-    expect(AppTypography.light.bodyLarge, AppTypography.dark.bodyLarge);
-    expect(AppTypography.light.bodyMedium, AppTypography.dark.bodyMedium);
-    expect(AppTypography.light.bodySmall, AppTypography.dark.bodySmall);
-    expect(AppTypography.light.labelSmall, AppTypography.dark.labelSmall);
-    expect(AppTypography.light.spacingXs, AppTypography.dark.spacingXs);
-    expect(AppTypography.light.spacingS, AppTypography.dark.spacingS);
-    expect(AppTypography.light.spacingSm, AppTypography.dark.spacingSm);
-    expect(AppTypography.light.spacingMd, AppTypography.dark.spacingMd);
-    expect(AppTypography.light.spacingLg, AppTypography.dark.spacingLg);
-    expect(AppTypography.light.spacingXl, AppTypography.dark.spacingXl);
-    expect(AppTypography.light.radiusSm, AppTypography.dark.radiusSm);
-    expect(AppTypography.light.radiusMd, AppTypography.dark.radiusMd);
-    expect(AppTypography.light.radiusLg, AppTypography.dark.radiusLg);
+    // AppTypography.== compares every field, so one equality assertion covers
+    // the whole value set.
     expect(AppTypography.light, AppTypography.dark);
   });
 

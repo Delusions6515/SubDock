@@ -83,16 +83,17 @@ Future<void> main() async {
   }
   final localeStore = LocalePreferenceStore(directories);
   // The tray is built before the app loads its preference, so the resolver
-  // reads a mutable holder that the locale-change callback updates.
-  var currentLocale = const Locale('zh');
+  // reads a mutable holder that the locale-change callback updates. Resolve
+  // the persisted preference here so a saved en preference shows in the tray
+  // on the very first launch, not only after a manual change.
+  var currentLocale = Locale((await localeStore.load()) ?? 'zh');
   final lifecycle = DesktopLifecycle(
     onExit: coordinator.dispose,
-    trayLabels: (key) {
+    trayLabels: (item) {
       final l10n = lookupAppLocalizations(currentLocale);
-      return switch (key) {
-        'show' => l10n.trayShowWindow,
-        'exit' => l10n.trayExit,
-        _ => key,
+      return switch (item) {
+        TrayItem.show => l10n.trayShowWindow,
+        TrayItem.exit => l10n.trayExit,
       };
     },
   );
@@ -109,9 +110,8 @@ Future<void> main() async {
       onCloseToTray: lifecycle.closeToTray,
       themeModeStore: ThemeModeStore(directories),
       localeStore: localeStore,
-      onLocaleChanged: () async {
-        final language = await localeStore.load() ?? 'zh';
-        currentLocale = Locale(language);
+      onLocaleChanged: (locale) async {
+        currentLocale = locale ?? const Locale('zh');
         await lifecycle.updateTray();
       },
     ),

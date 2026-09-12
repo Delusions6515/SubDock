@@ -53,7 +53,11 @@ class SubDockApp extends StatefulWidget {
   final Future<void> Function()? onCloseToTray;
   final ThemeModeStore? themeModeStore;
   final LocalePreferenceStore? localeStore;
-  final Future<void> Function()? onLocaleChanged;
+
+  /// Notified with the effective locale after a locale change or a successful
+  /// preference load at startup, so the caller (desktop_main) can rebuild the
+  /// tray menu in the same language.
+  final Future<void> Function(Locale?)? onLocaleChanged;
 
   /// Initial locale override; a [localeStore] load replaces it at startup.
   final Locale? locale;
@@ -132,6 +136,9 @@ class _SubDockAppState extends State<SubDockApp> {
     final language = await store.load();
     if (!mounted || language == null) return;
     setState(() => _localeOverride = Locale(language));
+    if (widget.onLocaleChanged != null) {
+      await widget.onLocaleChanged!(Locale(language));
+    }
   }
 
   Future<void> _onLocaleSelected(Locale? locale) async {
@@ -147,7 +154,9 @@ class _SubDockAppState extends State<SubDockApp> {
     } catch (error) {
       debugPrint('Failed to persist locale: $error');
     }
-    if (widget.onLocaleChanged != null) await widget.onLocaleChanged!();
+    if (widget.onLocaleChanged != null) {
+      await widget.onLocaleChanged!(locale);
+    }
   }
 
   Future<void> _autoStart() async {
@@ -656,8 +665,9 @@ class _ManagePageState extends State<_ManagePage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (!_ready || _controller == null) {
-      final reason = widget.coordinator.environmentIssues.isNotEmpty
-          ? _localizedIssue(l10n, widget.coordinator.environmentIssues.first)
+      final issues = widget.coordinator.environmentIssues;
+      final reason = issues.isNotEmpty
+          ? _localizedIssue(l10n, issues.first)
           : widget.error == null
           ? widget.state.message ?? l10n.backendNotRunning
           : _localizedError(l10n, widget.error);
@@ -960,11 +970,16 @@ class _SettingsPageState extends State<_SettingsPage> {
     });
   }
 
+  SubDockConfig? _validatedConfiguration;
   String? get _configurationIssue {
-    try {
-      SubDockConfig.fromJson(_configuration.toJson());
-    } on AppConfigError catch (error) {
-      return _localizedConfigError(AppLocalizations.of(context)!, error);
+    if (_validatedConfiguration != _configuration) {
+      _validatedConfiguration = null;
+      try {
+        SubDockConfig.fromJson(_configuration.toJson());
+        _validatedConfiguration = _configuration;
+      } on AppConfigError catch (error) {
+        return _localizedConfigError(AppLocalizations.of(context)!, error);
+      }
     }
     return null;
   }
@@ -1186,14 +1201,11 @@ class _SettingsPageState extends State<_SettingsPage> {
               value: 'system',
               child: Text(l10n.languageFollowSystem),
             ),
-            const DropdownMenuItem<String>(
-              value: 'zh',
-              child: Text('中文'),
-            ),
-            const DropdownMenuItem<String>(
-              value: 'en',
-              child: Text('English'),
-            ),
+            for (final language in LocalePreferenceStore.supported)
+              DropdownMenuItem<String>(
+                value: language,
+                child: Text(_languageLabel(language)),
+              ),
           ],
           onChanged: (value) => widget.onLocaleSelected(
             value == null || value == 'system' ? null : Locale(value),
@@ -1429,21 +1441,17 @@ class _InfoRow extends StatelessWidget {
 }
 
 /// Localizes an environment issue produced by the parse/validate layers.
-String _localizedIssue(AppLocalizations l10n, BackendEnvIssue issue) {
-  final text = switch (issue.code) {
-    BackendEnvIssueCode.missingPair => l10n.envIssueMissingPair,
-    BackendEnvIssueCode.invalidKey => l10n.envIssueInvalidKey(issue.key!),
-    BackendEnvIssueCode.duplicateKey => l10n.envIssueDuplicateKey(issue.key!),
-    BackendEnvIssueCode.reservedKey => l10n.envIssueReservedKey(issue.key!),
-    BackendEnvIssueCode.portRange => l10n.envIssuePortRange,
-    BackendEnvIssueCode.mergeBool => l10n.envIssueMergeBool,
-    BackendEnvIssueCode.pathPrefix => l10n.envIssuePathPrefix,
-    BackendEnvIssueCode.corsOrigin => l10n.envIssueCorsOrigin(issue.origin!),
-  };
-  return issue.line == null
-      ? text
-      : '${l10n.lineNumber(issue.line!)} $text';
-}
+String _localizedIssue(AppLocalizations l10n, BackendEnvIssue issue) =>
+    switch (issue.code) {
+      BackendEnvIssueCode.missingPair => l10n.envIssueMissingPair,
+      BackendEnvIssueCode.invalidKey => l10n.envIssueInvalidKey(issue.key!),
+      BackendEnvIssueCode.duplicateKey => l10n.envIssueDuplicateKey(issue.key!),
+      BackendEnvIssueCode.reservedKey => l10n.envIssueReservedKey(issue.key!),
+      BackendEnvIssueCode.portRange => l10n.envIssuePortRange,
+      BackendEnvIssueCode.mergeBool => l10n.envIssueMergeBool,
+      BackendEnvIssueCode.pathPrefix => l10n.envIssuePathPrefix,
+      BackendEnvIssueCode.corsOrigin => l10n.envIssueCorsOrigin(issue.origin!),
+    };
 
 /// Localizes a config error raised by the parse/validate layers.
 String _localizedConfigError(AppLocalizations l10n, AppConfigError error) {
@@ -1464,8 +1472,6 @@ String _localizedConfigError(AppLocalizations l10n, AppConfigError error) {
     AppConfigErrorCode.pendingMetadataInvalid =>
       l10n.configErrorPendingMetadataInvalid,
     AppConfigErrorCode.metadataInvalid => l10n.configErrorMetadataInvalid,
-    AppConfigErrorCode.configInvalid =>
-      l10n.configurationInvalid(error.detail ?? ''),
     AppConfigErrorCode.configStoreDisabled => l10n.configErrorStoreDisabled,
     AppConfigErrorCode.updaterDisabled => l10n.configErrorUpdaterDisabled,
     AppConfigErrorCode.componentRecoveryFailed =>
@@ -1485,3 +1491,11 @@ String _localizedError(AppLocalizations l10n, Object? error) {
   if (error is AppConfigError) return _localizedConfigError(l10n, error);
   return '$error';
 }
+
+/// The language-autonym label for a supported locale code. These are not
+/// translated (Chinese stays "中文" even in the English UI).
+String _languageLabel(String language) => switch (language) {
+      'zh' => '中文',
+      'en' => 'English',
+      _ => language,
+    };

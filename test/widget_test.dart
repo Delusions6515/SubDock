@@ -23,6 +23,7 @@ import 'package:subdock/app/app_coordinator.dart';
 import 'package:subdock/runtime/backend_runtime.dart';
 import 'package:subdock/runtime/runtime_directories.dart';
 import 'package:subdock/settings/backend_env_store.dart';
+import 'package:subdock/settings/config_error.dart';
 import 'package:subdock/settings/locale_preference_store.dart';
 import 'package:subdock/settings/theme_mode_store.dart';
 
@@ -217,7 +218,9 @@ void main() {
           coordinator: coordinator,
           autoStart: false,
           enableWebView: false,
-          desktopWarning: ValueNotifier<String>('演示模式'),
+          desktopWarning: ValueNotifier<AppConfigError>(
+            const AppConfigError(AppConfigErrorCode.trayUnavailable),
+          ),
           locale: const Locale('zh'),
         ),
       );

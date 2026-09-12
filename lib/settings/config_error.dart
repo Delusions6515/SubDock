@@ -19,7 +19,6 @@ enum AppConfigErrorCode {
   readFailed,
   pendingMetadataInvalid,
   metadataInvalid,
-  configInvalid,
   configStoreDisabled,
   updaterDisabled,
   componentRecoveryFailed,
@@ -64,7 +63,6 @@ class AppConfigError implements Exception {
     AppConfigErrorCode.readFailed => 'Failed to read configuration: $detail',
     AppConfigErrorCode.pendingMetadataInvalid => 'Invalid pending component metadata',
     AppConfigErrorCode.metadataInvalid => 'Invalid component metadata',
-    AppConfigErrorCode.configInvalid => 'Invalid SubDock configuration: $detail',
     AppConfigErrorCode.configStoreDisabled =>
       'The SubDock configuration store is not enabled',
     AppConfigErrorCode.updaterDisabled =>
