@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../runtime/runtime_permissions.dart';
+import '../settings/config_error.dart';
 
 enum ComponentKind { backend, frontend }
 
@@ -17,7 +18,7 @@ class ComponentPending {
     if (value is! Map ||
         value['version'] is! String ||
         (value['backupId'] != null && value['backupId'] is! String)) {
-      throw const FormatException('组件 pending 元数据无效');
+      throw const AppConfigError(AppConfigErrorCode.pendingMetadataInvalid);
     }
     return ComponentPending(
       version: value['version'] as String,
@@ -60,7 +61,7 @@ class ComponentMetadata {
         value['baseline'] is! String ||
         (value['active'] != null && value['active'] is! String) ||
         (value['previous'] != null && value['previous'] is! String)) {
-      throw const FormatException('组件元数据无效');
+      throw const AppConfigError(AppConfigErrorCode.metadataInvalid);
     }
     return ComponentMetadata(
       baseline: value['baseline'] as String,

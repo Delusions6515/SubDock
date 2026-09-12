@@ -11,6 +11,7 @@ import 'desktop_lifecycle.dart';
 import 'runtime/desktop_backend_runtime.dart';
 import 'runtime/runtime_directories.dart';
 import 'settings/backend_env_store.dart';
+import 'settings/config_error.dart';
 import 'settings/locale_preference_store.dart';
 import 'settings/subdock_config_store.dart';
 import 'settings/theme_mode_store.dart';
@@ -32,7 +33,7 @@ Future<void> main() async {
     );
   }
   final directories = await RuntimeDirectories.create();
-  String? startupBlocker;
+  Object? startupBlocker;
   try {
     await ComponentRecovery(
       bundleDirectory: File(Platform.resolvedExecutable).parent,
@@ -44,7 +45,10 @@ Future<void> main() async {
       ),
     ).recoverPending();
   } catch (error) {
-    startupBlocker = '组件更新恢复失败：$error';
+    startupBlocker = AppConfigError(
+      AppConfigErrorCode.componentRecoveryFailed,
+      detail: '$error',
+    );
   }
   final runtime = DesktopBackendRuntime(directories: directories);
   final metadataStore = ComponentMetadataStore(directories.components);

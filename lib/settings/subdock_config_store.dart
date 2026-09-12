@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../runtime/runtime_directories.dart';
 import '../runtime/runtime_permissions.dart';
+import 'config_error.dart';
 import 'subdock_config.dart';
 
 class SubDockConfigStore {
@@ -16,10 +17,10 @@ class SubDockConfigStore {
     if (!await file.exists()) return const SubDockConfig();
     try {
       return SubDockConfig.fromJson(jsonDecode(await file.readAsString()));
-    } on FormatException {
+    } on AppConfigError {
       rethrow;
     } on Object catch (error) {
-      throw FormatException('无法读取 SubDock 配置：$error');
+      throw AppConfigError(AppConfigErrorCode.readFailed, detail: '$error');
     }
   }
 

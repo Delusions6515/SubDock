@@ -4,6 +4,7 @@ import 'dart:io';
 import '../runtime/backend_runtime.dart';
 import '../settings/backend_env.dart';
 import '../settings/backend_env_store.dart';
+import '../settings/config_error.dart';
 import '../settings/subdock_config.dart';
 import '../settings/subdock_config_store.dart';
 import '../update/component_metadata_store.dart';
@@ -22,17 +23,17 @@ class AppCoordinator {
   final BackendRuntime runtime;
   final BackendEnvStore environmentStore;
   final SubDockConfigStore? configurationStore;
-  final String? startupBlocker;
+  final Object? startupBlocker;
   final ComponentUpdateOperations? componentUpdates;
   BackendEnvDocument _environment = BackendEnvDocument.parse('');
   SubDockConfig _configuration = const SubDockConfig();
-  String? _configurationError;
+  AppConfigError? _configurationError;
   Map<String, String> _effectiveEnvironment = const <String, String>{};
   Future<void> _operation = Future<void>.value();
 
   BackendEnvDocument get environment => _environment;
   SubDockConfig get configuration => _configuration;
-  String? get configurationError => _configurationError;
+  AppConfigError? get configurationError => _configurationError;
   Map<String, String> get effectiveEnvironment =>
       UnmodifiableMapView(_effectiveEnvironment);
 
@@ -72,15 +73,15 @@ class AppCoordinator {
     try {
       configuration = await _loadConfiguration();
       _configurationError = null;
-    } on FormatException catch (error) {
+    } on AppConfigError catch (error) {
       _configuration = const SubDockConfig();
-      _configurationError = error.message;
-      throw StateError('SubDock 配置无效：${error.message}');
+      _configurationError = error;
+      rethrow;
     }
     final issues = BackendEnvPolicy.validate(document);
     if (issues.isNotEmpty) {
       _environment = document;
-      throw StateError(issues.first.message);
+      throw _environmentError(issues.first);
     }
     await _activate(document, configuration);
     _environment = document;
@@ -90,7 +91,7 @@ class AppCoordinator {
   Future<void> saveEnvironment(BackendEnvDocument document) =>
       _serialize(() async {
         final issues = BackendEnvPolicy.validate(document);
-        if (issues.isNotEmpty) throw StateError(issues.first.message);
+        if (issues.isNotEmpty) throw _environmentError(issues.first);
         await environmentStore.save(document);
         await _activate(document, _configuration);
         _environment = document;
@@ -100,7 +101,9 @@ class AppCoordinator {
       _serialize(() async {
         SubDockConfig.fromJson(configuration.toJson());
         final store = configurationStore;
-        if (store == null) throw StateError('SubDock 配置存储尚未启用');
+        if (store == null) {
+          throw const AppConfigError(AppConfigErrorCode.configStoreDisabled);
+        }
         await store.save(configuration);
         await _activate(_environment, configuration);
         _configuration = configuration;
@@ -109,7 +112,9 @@ class AppCoordinator {
 
   Future<void> resetConfiguration() => _serialize(() async {
     final store = configurationStore;
-    if (store == null) throw StateError('SubDock 配置存储尚未启用');
+    if (store == null) {
+      throw const AppConfigError(AppConfigErrorCode.configStoreDisabled);
+    }
     await store.reset();
     const configuration = SubDockConfig();
     await _activate(_environment, configuration);
@@ -120,7 +125,7 @@ class AppCoordinator {
   Future<void> start() => _serialize(() async {
     _ensureStartupAllowed();
     if (environmentIssues.isNotEmpty) {
-      throw StateError(environmentIssues.first.message);
+      throw _environmentError(environmentIssues.first);
     }
     await runtime.start();
   });
@@ -130,7 +135,7 @@ class AppCoordinator {
   Future<void> restart() => _serialize(() async {
     _ensureStartupAllowed();
     if (environmentIssues.isNotEmpty) {
-      throw StateError(environmentIssues.first.message);
+      throw _environmentError(environmentIssues.first);
     }
     await runtime.restart();
   });
@@ -168,14 +173,17 @@ class AppCoordinator {
   ComponentUpdateOperations _requireUpdates() {
     final updates = componentUpdates;
     if (updates == null) {
-      throw StateError('组件更新器尚未在当前平台启用');
+      throw const AppConfigError(AppConfigErrorCode.updaterDisabled);
     }
     return updates;
   }
 
   void _ensureStartupAllowed() {
-    if (startupBlocker != null) throw StateError(startupBlocker!);
+    if (startupBlocker != null) throw startupBlocker!;
   }
+
+  static AppConfigError _environmentError(BackendEnvIssue issue) =>
+      AppConfigError(AppConfigErrorCode.environmentInvalid, issue: issue);
 
   Future<SubDockConfig> _loadConfiguration() async {
     final store = configurationStore;

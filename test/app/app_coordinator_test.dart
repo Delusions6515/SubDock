@@ -7,6 +7,7 @@ import 'package:subdock/runtime/backend_runtime.dart';
 import 'package:subdock/runtime/runtime_directories.dart';
 import 'package:subdock/settings/backend_env.dart';
 import 'package:subdock/settings/backend_env_store.dart';
+import 'package:subdock/settings/config_error.dart';
 import 'package:subdock/settings/subdock_config.dart';
 import 'package:subdock/settings/subdock_config_store.dart';
 import 'package:subdock/update/component_metadata_store.dart';
@@ -108,10 +109,13 @@ void main() {
         environmentStore: BackendEnvStore(
           await RuntimeDirectories.fromBaseDirectory(temp),
         ),
-        startupBlocker: '组件更新恢复失败',
+        startupBlocker: const AppConfigError(
+          AppConfigErrorCode.componentRecoveryFailed,
+          detail: 'test',
+        ),
       );
 
-      await expectLater(coordinator.start(), throwsStateError);
+      await expectLater(coordinator.start(), throwsA(isA<AppConfigError>()));
 
       expect(runtime.operations, isEmpty);
     },

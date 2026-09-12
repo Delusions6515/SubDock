@@ -11,6 +11,7 @@ import 'package:webview_all/webview_all.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../runtime/backend_runtime.dart';
 import '../settings/backend_env.dart';
+import '../settings/config_error.dart';
 import '../settings/locale_preference_store.dart';
 import '../settings/subdock_config.dart';
 import '../settings/theme_mode_store.dart';
@@ -45,7 +46,7 @@ class SubDockApp extends StatefulWidget {
   final AppCoordinator coordinator;
   final bool autoStart;
   final bool enableWebView;
-  final String? initialError;
+  final Object? initialError;
   final ValueListenable<String?>? desktopWarning;
   final Future<void> Function()? onMinimize;
   final Future<void> Function()? onToggleFullscreen;
@@ -69,7 +70,7 @@ class _SubDockAppState extends State<SubDockApp> {
   final _logs = <RuntimeLog>[];
   _AppPage _page = _AppPage.manage;
   BackendInfo? _info;
-  String? _error;
+  Object? _error;
   var _actionInProgress = false;
   ThemeMode _themeMode = ThemeMode.system;
   Locale? _localeOverride;
@@ -156,7 +157,7 @@ class _SubDockAppState extends State<SubDockApp> {
       if (!mounted) return;
       setState(() {
         _page = _AppPage.runtime;
-        _error = '$error';
+        _error = error;
       });
     }
   }
@@ -218,7 +219,7 @@ class _SubDockAppState extends State<SubDockApp> {
     try {
       await action();
     } catch (error) {
-      if (mounted) setState(() => _error = '$error');
+      if (mounted) setState(() => _error = error);
     } finally {
       if (mounted) setState(() => _actionInProgress = false);
     }
@@ -234,7 +235,7 @@ class _SubDockAppState extends State<SubDockApp> {
     try {
       await widget.coordinator.saveEnvironment(document);
     } catch (error) {
-      if (mounted) setState(() => _error = '$error');
+      if (mounted) setState(() => _error = error);
       rethrow;
     } finally {
       if (mounted) setState(() => _actionInProgress = false);
@@ -429,7 +430,7 @@ class _ManagePage extends StatefulWidget {
 
   final RuntimeState state;
   final AppCoordinator coordinator;
-  final String? error;
+  final Object? error;
   final bool enabled;
   final VoidCallback onRecover;
 
@@ -653,8 +654,10 @@ class _ManagePageState extends State<_ManagePage> {
     }
     if (!_ready || _controller == null) {
       final reason = widget.coordinator.environmentIssues.isNotEmpty
-          ? widget.coordinator.environmentIssues.first.message
-          : widget.error ?? widget.state.message ?? l10n.backendNotRunning;
+          ? _localizedIssue(l10n, widget.coordinator.environmentIssues.first)
+          : widget.error == null
+          ? widget.state.message ?? l10n.backendNotRunning
+          : _localizedError(l10n, widget.error);
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -725,7 +728,7 @@ class _RuntimePage extends StatelessWidget {
 
   final RuntimeState state;
   final BackendInfo? info;
-  final String? error;
+  final Object? error;
   final bool actionInProgress;
   final VoidCallback onStart;
   final VoidCallback onStop;
@@ -747,10 +750,10 @@ class _RuntimePage extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       children: [
         Text(label, style: Theme.of(context).textTheme.headlineMedium),
-        if (error ?? state.message case final message?) ...[
+        if (error != null || state.message != null) ...[
           const SizedBox(height: 12),
           Text(
-            message,
+            error != null ? _localizedError(l10n, error) : state.message!,
             style: TextStyle(color: colors.error),
           ),
         ],
@@ -853,7 +856,7 @@ class _SettingsPage extends StatefulWidget {
 
   final BackendEnvDocument environment;
   final SubDockConfig configuration;
-  final String? configurationError;
+  final AppConfigError? configurationError;
   final AppCoordinator coordinator;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeSelected;
@@ -882,7 +885,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   var _httpMetaEnabled = true;
   final _componentUpdates = <ComponentKind, ComponentUpdate>{};
   final _componentStatuses = <ComponentKind, ComponentVersionStatus>{};
-  final _componentErrors = <ComponentKind, String>{};
+  final _componentErrors = <ComponentKind, Object?>{};
   final _componentBusy = <ComponentKind>{};
 
   @override
@@ -957,8 +960,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   String? get _configurationIssue {
     try {
       SubDockConfig.fromJson(_configuration.toJson());
-    } on FormatException catch (error) {
-      return error.message;
+    } on AppConfigError catch (error) {
+      return _localizedConfigError(AppLocalizations.of(context)!, error);
     }
     return null;
   }
@@ -1067,7 +1070,7 @@ class _SettingsPageState extends State<_SettingsPage> {
       final update = await widget.coordinator.checkComponent(kind);
       if (mounted) setState(() => _componentUpdates[kind] = update);
     } catch (error) {
-      if (mounted) setState(() => _componentErrors[kind] = '$error');
+      if (mounted) setState(() => _componentErrors[kind] = error);
     } finally {
       if (mounted) setState(() => _componentBusy.remove(kind));
     }
@@ -1104,7 +1107,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         });
       }
     } catch (error) {
-      if (mounted) setState(() => _componentErrors[kind] = '$error');
+      if (mounted) setState(() => _componentErrors[kind] = error);
     } finally {
       if (mounted) setState(() => _componentBusy.remove(kind));
     }
@@ -1132,7 +1135,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         });
       }
     } catch (error) {
-      if (mounted) setState(() => _componentErrors[kind] = '$error');
+      if (mounted) setState(() => _componentErrors[kind] = error);
     } finally {
       if (mounted) setState(() => _componentBusy.remove(kind));
     }
@@ -1195,7 +1198,9 @@ class _SettingsPageState extends State<_SettingsPage> {
         Text(l10n.subdockConfigHeading, style: heading),
         if (widget.configurationError != null) ...[
           Text(
-            l10n.configurationInvalid(widget.configurationError!),
+            l10n.configurationInvalid(
+              _localizedConfigError(l10n, widget.configurationError!),
+            ),
             style: TextStyle(color: colors.error),
           ),
           SizedBox(height: typography.spacingS),
@@ -1275,7 +1280,7 @@ class _SettingsPageState extends State<_SettingsPage> {
               SizedBox(height: typography.spacingS),
               for (final issue in issues)
                 Text(
-                  '${issue.line == null ? '' : l10n.lineNumber(issue.line!)}${issue.message}',
+                  '${issue.line == null ? '' : l10n.lineNumber(issue.line!)}${_localizedIssue(l10n, issue)}',
                   style: TextStyle(color: colors.error),
                 ),
             ],
@@ -1322,7 +1327,7 @@ class _ComponentCard extends StatelessWidget {
   final ComponentKind kind;
   final ComponentVersionStatus? status;
   final ComponentUpdate? update;
-  final String? error;
+  final Object? error;
   final bool busy;
   final VoidCallback onCheck;
   final VoidCallback? onUpdate;
@@ -1362,7 +1367,7 @@ class _ComponentCard extends StatelessWidget {
             if (error != null) ...[
               const SizedBox(height: 4),
               Text(
-                error!,
+                _localizedError(l10n, error),
                 style: TextStyle(color: colors.error),
               ),
             ],
@@ -1416,4 +1421,61 @@ class _InfoRow extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Localizes an environment issue produced by the parse/validate layers.
+String _localizedIssue(AppLocalizations l10n, BackendEnvIssue issue) {
+  final text = switch (issue.code) {
+    BackendEnvIssueCode.missingPair => l10n.envIssueMissingPair,
+    BackendEnvIssueCode.invalidKey => l10n.envIssueInvalidKey(issue.key!),
+    BackendEnvIssueCode.duplicateKey => l10n.envIssueDuplicateKey(issue.key!),
+    BackendEnvIssueCode.reservedKey => l10n.envIssueReservedKey(issue.key!),
+    BackendEnvIssueCode.portRange => l10n.envIssuePortRange,
+    BackendEnvIssueCode.mergeBool => l10n.envIssueMergeBool,
+    BackendEnvIssueCode.pathPrefix => l10n.envIssuePathPrefix,
+    BackendEnvIssueCode.corsOrigin => l10n.envIssueCorsOrigin(issue.origin!),
+  };
+  return issue.line == null
+      ? text
+      : '${l10n.lineNumber(issue.line!)} $text';
+}
+
+/// Localizes a config error raised by the parse/validate layers.
+String _localizedConfigError(AppLocalizations l10n, AppConfigError error) {
+  return switch (error.code) {
+    AppConfigErrorCode.unsupportedVersion => l10n.configErrorUnsupportedVersion,
+    AppConfigErrorCode.emptyHost => l10n.configErrorNotEmpty(error.key!),
+    AppConfigErrorCode.notAnObject => l10n.configErrorNotAnObject(error.name!),
+    AppConfigErrorCode.invalidFieldName =>
+      l10n.configErrorInvalidFieldName(error.name!),
+    AppConfigErrorCode.unknownField => l10n.configErrorUnknownField(error.field!),
+    AppConfigErrorCode.stringWithNewline =>
+      l10n.configErrorStringWithNewline(error.key!),
+    AppConfigErrorCode.mustBeBoolean => l10n.configErrorNotBoolean(error.key!),
+    AppConfigErrorCode.portRange => l10n.configErrorPortRange(error.key!),
+    AppConfigErrorCode.pathPrefix => l10n.configErrorPathPrefix(error.key!),
+    AppConfigErrorCode.corsOrigin => l10n.configErrorCorsOrigin(error.origin!),
+    AppConfigErrorCode.readFailed => l10n.configErrorReadFailed(error.detail!),
+    AppConfigErrorCode.pendingMetadataInvalid =>
+      l10n.configErrorPendingMetadataInvalid,
+    AppConfigErrorCode.metadataInvalid => l10n.configErrorMetadataInvalid,
+    AppConfigErrorCode.configInvalid =>
+      l10n.configurationInvalid(error.detail ?? ''),
+    AppConfigErrorCode.configStoreDisabled => l10n.configErrorStoreDisabled,
+    AppConfigErrorCode.updaterDisabled => l10n.configErrorUpdaterDisabled,
+    AppConfigErrorCode.componentRecoveryFailed =>
+      l10n.configErrorRecoveryFailed(error.detail ?? ''),
+    AppConfigErrorCode.environmentInvalid => _localizedIssue(
+      l10n,
+      error.issue!,
+    ),
+  };
+}
+
+/// Renders any shell error as a localized message when it is a coded domain
+/// error, otherwise falls back to the exception's own text.
+String _localizedError(AppLocalizations l10n, Object? error) {
+  if (error is BackendEnvIssue) return _localizedIssue(l10n, error);
+  if (error is AppConfigError) return _localizedConfigError(l10n, error);
+  return '$error';
 }

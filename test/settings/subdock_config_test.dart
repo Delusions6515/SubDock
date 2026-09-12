@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:subdock/runtime/runtime_directories.dart';
 import 'package:subdock/settings/backend_env.dart';
+import 'package:subdock/settings/config_error.dart';
 import 'package:subdock/settings/subdock_config.dart';
 import 'package:subdock/settings/subdock_config_store.dart';
 
@@ -24,15 +25,15 @@ void main() {
         'schemaVersion': 1,
         'backend': {'apiPort': 0},
       }),
-      throwsFormatException,
+      throwsA(isA<AppConfigError>()),
     );
     expect(
       () => SubDockConfig.fromJson({'schemaVersion': 2}),
-      throwsFormatException,
+      throwsA(isA<AppConfigError>()),
     );
     expect(
       () => SubDockConfig.fromJson({'schemaVersion': 1, 'unknown': true}),
-      throwsFormatException,
+      throwsA(isA<AppConfigError>()),
     );
   });
 
@@ -68,7 +69,7 @@ void main() {
     final store = SubDockConfigStore(directories);
     await store.file.writeAsString('{not json');
 
-    await expectLater(store.load(), throwsFormatException);
+    await expectLater(store.load(), throwsA(isA<AppConfigError>()));
 
     await store.reset();
     expect(await store.load(), const SubDockConfig());

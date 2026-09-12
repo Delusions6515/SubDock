@@ -1,11 +1,42 @@
 import 'dart:collection';
 import 'dart:io';
 
-class BackendEnvIssue {
-  const BackendEnvIssue(this.message, {this.line});
+enum BackendEnvIssueCode {
+  missingPair,
+  invalidKey,
+  duplicateKey,
+  reservedKey,
+  portRange,
+  mergeBool,
+  pathPrefix,
+  corsOrigin,
+}
 
-  final String message;
+class BackendEnvIssue {
+  const BackendEnvIssue(
+    this.code, {
+    this.line,
+    this.key,
+    this.origin,
+  });
+
+  final BackendEnvIssueCode code;
   final int? line;
+  final String? key;
+  final String? origin;
+
+  /// English debugging fallback; the UI renders a localized message from
+  /// [code] plus its parameters instead of this raw string.
+  String get message => switch (code) {
+        BackendEnvIssueCode.missingPair => 'Missing KEY=VALUE',
+        BackendEnvIssueCode.invalidKey => 'Invalid environment variable name: $key',
+        BackendEnvIssueCode.duplicateKey => 'Duplicate environment variable: $key',
+        BackendEnvIssueCode.reservedKey => 'Reserved SubDock environment variable: $key',
+        BackendEnvIssueCode.portRange => 'Port must be between 1 and 65535',
+        BackendEnvIssueCode.mergeBool => 'Merge mode must be true or false',
+        BackendEnvIssueCode.pathPrefix => 'Frontend Backend Path must start with /',
+        BackendEnvIssueCode.corsOrigin => 'Invalid CORS origin: $origin',
+      };
 }
 
 class BackendEnvDocument {
@@ -31,16 +62,30 @@ class BackendEnvDocument {
       if (line.trim().isEmpty || line.trimLeft().startsWith('#')) continue;
       final separator = line.indexOf('=');
       if (separator < 1) {
-        issues.add(BackendEnvIssue('缺少 KEY=VALUE', line: index + 1));
+        issues.add(
+          BackendEnvIssue(BackendEnvIssueCode.missingPair, line: index + 1),
+        );
         continue;
       }
       final key = line.substring(0, separator);
       if (!_keyPattern.hasMatch(key)) {
-        issues.add(BackendEnvIssue('环境变量名无效：$key', line: index + 1));
+        issues.add(
+          BackendEnvIssue(
+            BackendEnvIssueCode.invalidKey,
+            line: index + 1,
+            key: key,
+          ),
+        );
         continue;
       }
       if (values.containsKey(key)) {
-        issues.add(BackendEnvIssue('环境变量重复：$key', line: index + 1));
+        issues.add(
+          BackendEnvIssue(
+            BackendEnvIssueCode.duplicateKey,
+            line: index + 1,
+            key: key,
+          ),
+        );
         continue;
       }
       values[key] = line.substring(separator + 1);
@@ -51,7 +96,7 @@ class BackendEnvDocument {
   BackendEnvDocument withValue(String key, String value) {
     if (!_keyPattern.hasMatch(key)) throw ArgumentError.value(key, 'key');
     if (value.contains('\n') || value.contains('\r')) {
-      throw ArgumentError.value(value, 'value', '环境变量值不能包含换行');
+      throw ArgumentError.value(value, 'value', 'value must not contain a newline');
     }
     final lineEnding = rawText.contains('\r\n') ? '\r\n' : '\n';
     final trailingLineEnding = rawText.endsWith('\n');
@@ -99,7 +144,9 @@ class BackendEnvPolicy {
     final issues = [...document.issues];
     for (final key in reservedKeys) {
       if (document.values.containsKey(key)) {
-        issues.add(BackendEnvIssue('SubDock 保留环境变量：$key'));
+        issues.add(
+          BackendEnvIssue(BackendEnvIssueCode.reservedKey, key: key),
+        );
       }
     }
     final configuredPort = document.values[port];
@@ -108,17 +155,17 @@ class BackendEnvPolicy {
         : int.tryParse(configuredPort);
     if (configuredPort != null &&
         (parsedPort == null || parsedPort < 1 || parsedPort > 65535)) {
-      issues.add(const BackendEnvIssue('端口必须在 1 到 65535 之间'));
+      issues.add(const BackendEnvIssue(BackendEnvIssueCode.portRange));
     }
     final configuredMerge = document.values[merge];
     if (configuredMerge != null &&
         configuredMerge != 'true' &&
         configuredMerge != 'false') {
-      issues.add(const BackendEnvIssue('合并模式必须为 true 或 false'));
+      issues.add(const BackendEnvIssue(BackendEnvIssueCode.mergeBool));
     }
     final configuredPath = document.values[frontendBackendPath];
     if (configuredPath != null && !configuredPath.startsWith('/')) {
-      issues.add(const BackendEnvIssue('Frontend Backend Path 必须以 / 开头'));
+      issues.add(const BackendEnvIssue(BackendEnvIssueCode.pathPrefix));
     }
     for (final origin in _origins(document.values[corsAllowedOrigins])) {
       final uri = Uri.tryParse(origin);
@@ -129,7 +176,7 @@ class BackendEnvPolicy {
           uri.query.isNotEmpty ||
           uri.fragment.isNotEmpty ||
           (uri.path.isNotEmpty && uri.path != '/')) {
-        issues.add(BackendEnvIssue('CORS origin 无效：$origin'));
+        issues.add(BackendEnvIssue(BackendEnvIssueCode.corsOrigin, origin: origin));
       }
     }
     return issues;

@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'backend_env.dart';
+import 'config_error.dart';
 
 class SubDockConfig {
   const SubDockConfig({
@@ -18,7 +19,7 @@ class SubDockConfig {
     final root = _object(json, '根对象');
     _rejectUnknownKeys(root, const {'schemaVersion', 'backend', 'httpMeta'});
     if (root['schemaVersion'] != schemaVersion) {
-      throw const FormatException('不支持的 SubDock 配置版本');
+      throw const AppConfigError(AppConfigErrorCode.unsupportedVersion);
     }
     return SubDockConfig(
       backend: SubDockBackendConfig.fromJson(root['backend']),
@@ -148,7 +149,10 @@ class SubDockHttpMetaConfig {
       port: _optionalPort(object, 'port'),
     );
     if (config.host?.isEmpty ?? false) {
-      throw const FormatException('httpMeta.host 不能为空');
+      throw const AppConfigError(
+        AppConfigErrorCode.emptyHost,
+        key: 'httpMeta.host',
+      );
     }
     return config;
   }
@@ -264,10 +268,14 @@ class EffectiveRuntimeConfig {
 }
 
 Map<String, Object?> _object(Object? value, String name) {
-  if (value is! Map) throw FormatException('$name 必须是对象');
+  if (value is! Map) {
+    throw AppConfigError(AppConfigErrorCode.notAnObject, name: name);
+  }
   final object = <String, Object?>{};
   for (final entry in value.entries) {
-    if (entry.key is! String) throw FormatException('$name 的字段名无效');
+    if (entry.key is! String) {
+      throw AppConfigError(AppConfigErrorCode.invalidFieldName, name: name);
+    }
     object[entry.key as String] = entry.value;
   }
   return object;
@@ -276,7 +284,10 @@ Map<String, Object?> _object(Object? value, String name) {
 void _rejectUnknownKeys(Map<String, Object?> object, Set<String> allowed) {
   final unknown = object.keys.where((key) => !allowed.contains(key));
   if (unknown.isNotEmpty) {
-    throw FormatException('不支持的 SubDock 配置字段：${unknown.first}');
+    throw AppConfigError(
+      AppConfigErrorCode.unknownField,
+      field: unknown.first,
+    );
   }
 }
 
@@ -284,7 +295,7 @@ String? _optionalString(Map<String, Object?> object, String key) {
   final value = object[key];
   if (value == null) return null;
   if (value is! String || value.contains('\n') || value.contains('\r')) {
-    throw FormatException('$key 必须是不含换行的字符串');
+    throw AppConfigError(AppConfigErrorCode.stringWithNewline, key: key);
   }
   return value;
 }
@@ -292,7 +303,7 @@ String? _optionalString(Map<String, Object?> object, String key) {
 bool? _optionalBool(Map<String, Object?> object, String key) {
   final value = object[key];
   if (value == null) return null;
-  if (value is! bool) throw FormatException('$key 必须是布尔值');
+  if (value is! bool) throw AppConfigError(AppConfigErrorCode.mustBeBoolean, key: key);
   return value;
 }
 
@@ -300,25 +311,36 @@ int? _optionalPort(Map<String, Object?> object, String key) {
   final value = object[key];
   if (value == null) return null;
   if (value is! int || value < 1 || value > 65535) {
-    throw FormatException('$key 必须在 1 到 65535 之间');
+    throw AppConfigError(AppConfigErrorCode.portRange, key: key);
   }
   return value;
 }
 
 void _validateBackend(SubDockBackendConfig config) {
   if (config.apiHost?.isEmpty ?? false) {
-    throw const FormatException('backend.apiHost 不能为空');
+    throw const AppConfigError(
+      AppConfigErrorCode.emptyHost,
+      key: 'backend.apiHost',
+    );
   }
   if (config.frontendBackendPath != null &&
       !config.frontendBackendPath!.startsWith('/')) {
-    throw const FormatException('backend.frontendBackendPath 必须以 / 开头');
+    throw const AppConfigError(
+      AppConfigErrorCode.pathPrefix,
+      key: 'backend.frontendBackendPath',
+    );
   }
   final origins = config.corsAllowedOrigins;
   if (origins == null) return;
   final issues = BackendEnvPolicy.validate(
     BackendEnvDocument.parse('${BackendEnvPolicy.corsAllowedOrigins}=$origins'),
   );
-  if (issues.isNotEmpty) throw FormatException(issues.first.message);
+  if (issues.isNotEmpty) {
+    throw AppConfigError(
+      AppConfigErrorCode.corsOrigin,
+      origin: issues.first.origin,
+    );
+  }
 }
 
 const _unset = Object();

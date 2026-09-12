@@ -260,4 +260,106 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get rollback => '回滚';
+
+  @override
+  String get envIssueMissingPair => '缺少 KEY=VALUE';
+
+  @override
+  String envIssueInvalidKey(Object key) {
+    return '环境变量名无效：$key';
+  }
+
+  @override
+  String envIssueDuplicateKey(Object key) {
+    return '环境变量重复：$key';
+  }
+
+  @override
+  String envIssueReservedKey(Object key) {
+    return 'SubDock 保留环境变量：$key';
+  }
+
+  @override
+  String get envIssuePortRange => '端口必须在 1 到 65535 之间';
+
+  @override
+  String get envIssueMergeBool => '合并模式必须为 true 或 false';
+
+  @override
+  String get envIssuePathPrefix => 'Frontend Backend Path 必须以 / 开头';
+
+  @override
+  String envIssueCorsOrigin(Object origin) {
+    return 'CORS origin 无效：$origin';
+  }
+
+  @override
+  String get configErrorUnsupportedVersion => '不支持的 SubDock 配置版本';
+
+  @override
+  String configErrorNotAnObject(Object name) {
+    return '$name 必须是对象';
+  }
+
+  @override
+  String configErrorInvalidFieldName(Object name) {
+    return '$name 的字段名无效';
+  }
+
+  @override
+  String configErrorUnknownField(Object field) {
+    return '不支持的 SubDock 配置字段：$field';
+  }
+
+  @override
+  String configErrorStringWithNewline(Object key) {
+    return '$key 必须是不含换行的字符串';
+  }
+
+  @override
+  String configErrorNotBoolean(Object key) {
+    return '$key 必须是布尔值';
+  }
+
+  @override
+  String configErrorPortRange(Object key) {
+    return '$key 必须在 1 到 65535 之间';
+  }
+
+  @override
+  String configErrorNotEmpty(Object key) {
+    return '$key 不能为空';
+  }
+
+  @override
+  String configErrorPathPrefix(Object key) {
+    return '$key 必须以 / 开头';
+  }
+
+  @override
+  String configErrorCorsOrigin(Object origin) {
+    return 'CORS origin 无效：$origin';
+  }
+
+  @override
+  String configErrorReadFailed(Object detail) {
+    return '无法读取 SubDock 配置：$detail';
+  }
+
+  @override
+  String get configErrorPendingMetadataInvalid => '组件 pending 元数据无效';
+
+  @override
+  String get configErrorMetadataInvalid => '组件元数据无效';
+
+  @override
+  String get configErrorStoreDisabled => 'SubDock 配置存储尚未启用';
+
+  @override
+  String get configErrorUpdaterDisabled => '组件更新器尚未在当前平台启用';
+
+  @override
+  String configErrorRecoveryFailed(Object detail) {
+    return '组件更新恢复失败：$detail';
+  }
 }

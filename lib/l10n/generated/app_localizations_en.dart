@@ -268,4 +268,110 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rollback => 'Rollback';
+
+  @override
+  String get envIssueMissingPair => 'Missing KEY=VALUE';
+
+  @override
+  String envIssueInvalidKey(Object key) {
+    return 'Invalid environment variable name: $key';
+  }
+
+  @override
+  String envIssueDuplicateKey(Object key) {
+    return 'Duplicate environment variable: $key';
+  }
+
+  @override
+  String envIssueReservedKey(Object key) {
+    return 'Reserved SubDock environment variable: $key';
+  }
+
+  @override
+  String get envIssuePortRange => 'Port must be between 1 and 65535';
+
+  @override
+  String get envIssueMergeBool => 'Merge mode must be true or false';
+
+  @override
+  String get envIssuePathPrefix => 'Frontend Backend Path must start with /';
+
+  @override
+  String envIssueCorsOrigin(Object origin) {
+    return 'Invalid CORS origin: $origin';
+  }
+
+  @override
+  String get configErrorUnsupportedVersion =>
+      'Unsupported SubDock configuration version';
+
+  @override
+  String configErrorNotAnObject(Object name) {
+    return '$name must be an object';
+  }
+
+  @override
+  String configErrorInvalidFieldName(Object name) {
+    return '$name has an invalid field name';
+  }
+
+  @override
+  String configErrorUnknownField(Object field) {
+    return 'Unsupported SubDock configuration field: $field';
+  }
+
+  @override
+  String configErrorStringWithNewline(Object key) {
+    return '$key must be a string without newlines';
+  }
+
+  @override
+  String configErrorNotBoolean(Object key) {
+    return '$key must be a boolean';
+  }
+
+  @override
+  String configErrorPortRange(Object key) {
+    return '$key must be between 1 and 65535';
+  }
+
+  @override
+  String configErrorNotEmpty(Object key) {
+    return '$key must not be empty';
+  }
+
+  @override
+  String configErrorPathPrefix(Object key) {
+    return '$key must start with /';
+  }
+
+  @override
+  String configErrorCorsOrigin(Object origin) {
+    return 'Invalid CORS origin: $origin';
+  }
+
+  @override
+  String configErrorReadFailed(Object detail) {
+    return 'Failed to read SubDock configuration: $detail';
+  }
+
+  @override
+  String get configErrorPendingMetadataInvalid =>
+      'Invalid pending component metadata';
+
+  @override
+  String get configErrorMetadataInvalid => 'Invalid component metadata';
+
+  @override
+  String get configErrorStoreDisabled =>
+      'The SubDock configuration store is not enabled';
+
+  @override
+  String get configErrorUpdaterDisabled =>
+      'The component updater is not enabled on this platform';
+
+  @override
+  String configErrorRecoveryFailed(Object detail) {
+    return 'Component update recovery failed: $detail';
+  }
 }

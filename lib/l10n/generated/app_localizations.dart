@@ -551,6 +551,150 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'回滚'**
   String get rollback;
+
+  /// No description provided for @envIssueMissingPair.
+  ///
+  /// In zh, this message translates to:
+  /// **'缺少 KEY=VALUE'**
+  String get envIssueMissingPair;
+
+  /// No description provided for @envIssueInvalidKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'环境变量名无效：{key}'**
+  String envIssueInvalidKey(Object key);
+
+  /// No description provided for @envIssueDuplicateKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'环境变量重复：{key}'**
+  String envIssueDuplicateKey(Object key);
+
+  /// No description provided for @envIssueReservedKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'SubDock 保留环境变量：{key}'**
+  String envIssueReservedKey(Object key);
+
+  /// No description provided for @envIssuePortRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口必须在 1 到 65535 之间'**
+  String get envIssuePortRange;
+
+  /// No description provided for @envIssueMergeBool.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并模式必须为 true 或 false'**
+  String get envIssueMergeBool;
+
+  /// No description provided for @envIssuePathPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'Frontend Backend Path 必须以 / 开头'**
+  String get envIssuePathPrefix;
+
+  /// No description provided for @envIssueCorsOrigin.
+  ///
+  /// In zh, this message translates to:
+  /// **'CORS origin 无效：{origin}'**
+  String envIssueCorsOrigin(Object origin);
+
+  /// No description provided for @configErrorUnsupportedVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'不支持的 SubDock 配置版本'**
+  String get configErrorUnsupportedVersion;
+
+  /// No description provided for @configErrorNotAnObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 必须是对象'**
+  String configErrorNotAnObject(Object name);
+
+  /// No description provided for @configErrorInvalidFieldName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 的字段名无效'**
+  String configErrorInvalidFieldName(Object name);
+
+  /// No description provided for @configErrorUnknownField.
+  ///
+  /// In zh, this message translates to:
+  /// **'不支持的 SubDock 配置字段：{field}'**
+  String configErrorUnknownField(Object field);
+
+  /// No description provided for @configErrorStringWithNewline.
+  ///
+  /// In zh, this message translates to:
+  /// **'{key} 必须是不含换行的字符串'**
+  String configErrorStringWithNewline(Object key);
+
+  /// No description provided for @configErrorNotBoolean.
+  ///
+  /// In zh, this message translates to:
+  /// **'{key} 必须是布尔值'**
+  String configErrorNotBoolean(Object key);
+
+  /// No description provided for @configErrorPortRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'{key} 必须在 1 到 65535 之间'**
+  String configErrorPortRange(Object key);
+
+  /// No description provided for @configErrorNotEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'{key} 不能为空'**
+  String configErrorNotEmpty(Object key);
+
+  /// No description provided for @configErrorPathPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'{key} 必须以 / 开头'**
+  String configErrorPathPrefix(Object key);
+
+  /// No description provided for @configErrorCorsOrigin.
+  ///
+  /// In zh, this message translates to:
+  /// **'CORS origin 无效：{origin}'**
+  String configErrorCorsOrigin(Object origin);
+
+  /// No description provided for @configErrorReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取 SubDock 配置：{detail}'**
+  String configErrorReadFailed(Object detail);
+
+  /// No description provided for @configErrorPendingMetadataInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件 pending 元数据无效'**
+  String get configErrorPendingMetadataInvalid;
+
+  /// No description provided for @configErrorMetadataInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件元数据无效'**
+  String get configErrorMetadataInvalid;
+
+  /// No description provided for @configErrorStoreDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'SubDock 配置存储尚未启用'**
+  String get configErrorStoreDisabled;
+
+  /// No description provided for @configErrorUpdaterDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件更新器尚未在当前平台启用'**
+  String get configErrorUpdaterDisabled;
+
+  /// No description provided for @configErrorRecoveryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件更新恢复失败：{detail}'**
+  String configErrorRecoveryFailed(Object detail);
 }
 
 class _AppLocalizationsDelegate
