@@ -6,6 +6,7 @@ import 'package:flutter/material.dart'
     show
         Brightness,
         FilledButton,
+        Locale,
         NavigationBar,
         NavigationRail,
         OutlinedButton,
@@ -44,6 +45,7 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
+        locale: const Locale('zh'),
       ),
     );
 
@@ -105,6 +107,7 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
+        locale: const Locale('zh'),
       ),
     );
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
@@ -136,6 +139,7 @@ void main() {
           coordinator: coordinator,
           autoStart: false,
           enableWebView: false,
+          locale: const Locale('zh'),
           onMinimize: () async => minimizes++,
           onToggleFullscreen: () async => fullscreenToggles++,
           onCloseToTray: () async => closesToTray++,
@@ -175,6 +179,7 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
+        locale: const Locale('zh'),
       ),
     );
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -211,6 +216,7 @@ void main() {
           autoStart: false,
           enableWebView: false,
           desktopWarning: ValueNotifier<String>('演示模式'),
+          locale: const Locale('zh'),
         ),
       );
 
@@ -254,6 +260,7 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
+        locale: const Locale('zh'),
       ),
     );
     expect(
@@ -270,6 +277,7 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
+        locale: const Locale('zh'),
       ),
     );
     expect(
@@ -298,6 +306,7 @@ void main() {
         coordinator: coordinator,
         autoStart: false,
         enableWebView: false,
+        locale: const Locale('zh'),
       ),
     );
 
@@ -340,6 +349,7 @@ void main() {
         autoStart: false,
         enableWebView: false,
         themeModeStore: store,
+        locale: const Locale('zh'),
       ),
     );
     await _pumpRealIo(tester);
@@ -372,6 +382,7 @@ void main() {
         autoStart: false,
         enableWebView: false,
         themeModeStore: store,
+        locale: const Locale('zh'),
       ),
     );
 
@@ -415,6 +426,7 @@ void main() {
           coordinator: coordinator,
           autoStart: false,
           enableWebView: false,
+          locale: const Locale('zh'),
         ),
       );
 
@@ -465,6 +477,7 @@ void main() {
           autoStart: false,
           enableWebView: false,
           themeModeStore: store,
+          locale: const Locale('zh'),
         ),
       );
       await _pumpRealIo(tester);

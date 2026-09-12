@@ -11,6 +11,7 @@ import 'desktop_lifecycle.dart';
 import 'runtime/desktop_backend_runtime.dart';
 import 'runtime/runtime_directories.dart';
 import 'settings/backend_env_store.dart';
+import 'settings/locale_preference_store.dart';
 import 'settings/subdock_config_store.dart';
 import 'settings/theme_mode_store.dart';
 import 'update/component_metadata_store.dart';
@@ -88,6 +89,7 @@ Future<void> main() async {
       onToggleFullscreen: lifecycle.toggleFullscreen,
       onCloseToTray: lifecycle.closeToTray,
       themeModeStore: ThemeModeStore(directories),
+      localeStore: LocalePreferenceStore(directories),
     ),
   );
 }

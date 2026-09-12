@@ -70,6 +70,8 @@
   "advancedRawEnvSubtitle": "Edit the full Backend environment variables directly",
   "lineNumber": "Line {line}:",
   "appearanceHeading": "Appearance",
+  "languageFollowSystem": "Follow system",
+  "componentUpdatesHeading": "Component Updates",
   "checkForUpdates": "Check for updates",
   "update": "Update",
   "rollback": "Rollback"

@@ -70,6 +70,8 @@
   "advancedRawEnvSubtitle": "直接编辑完整 Backend 环境变量",
   "lineNumber": "第 {line} 行：",
   "appearanceHeading": "外观",
+  "languageFollowSystem": "跟随系统",
+  "componentUpdatesHeading": "组件更新",
   "checkForUpdates": "检查更新",
   "update": "更新",
   "rollback": "回滚"

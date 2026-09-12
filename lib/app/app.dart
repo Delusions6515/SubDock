@@ -11,6 +11,7 @@ import 'package:webview_all/webview_all.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../runtime/backend_runtime.dart';
 import '../settings/backend_env.dart';
+import '../settings/locale_preference_store.dart';
 import '../settings/subdock_config.dart';
 import '../settings/theme_mode_store.dart';
 import '../update/component_metadata_store.dart';
@@ -36,6 +37,9 @@ class SubDockApp extends StatefulWidget {
     this.onToggleFullscreen,
     this.onCloseToTray,
     this.themeModeStore,
+    this.localeStore,
+    this.onLocaleChanged,
+    this.locale,
   });
 
   final AppCoordinator coordinator;
@@ -47,6 +51,11 @@ class SubDockApp extends StatefulWidget {
   final Future<void> Function()? onToggleFullscreen;
   final Future<void> Function()? onCloseToTray;
   final ThemeModeStore? themeModeStore;
+  final LocalePreferenceStore? localeStore;
+  final Future<void> Function()? onLocaleChanged;
+
+  /// Initial locale override; a [localeStore] load replaces it at startup.
+  final Locale? locale;
 
   @override
   State<SubDockApp> createState() => _SubDockAppState();
@@ -63,10 +72,12 @@ class _SubDockAppState extends State<SubDockApp> {
   String? _error;
   var _actionInProgress = false;
   ThemeMode _themeMode = ThemeMode.system;
+  Locale? _localeOverride;
 
   @override
   void initState() {
     super.initState();
+    _localeOverride = widget.locale;
     _state = widget.coordinator.runtime.currentState;
     _error = widget.initialError;
     if (_error != null) _page = _AppPage.runtime;
@@ -78,6 +89,7 @@ class _SubDockAppState extends State<SubDockApp> {
     widget.desktopWarning?.addListener(_onDesktopWarning);
     unawaited(_loadLogTail());
     unawaited(_loadThemeMode());
+    unawaited(_loadLocalePreference());
     if (widget.autoStart) unawaited(_autoStart());
   }
 
@@ -111,6 +123,30 @@ class _SubDockAppState extends State<SubDockApp> {
     } catch (error) {
       debugPrint('Failed to persist theme mode: $error');
     }
+  }
+
+  Future<void> _loadLocalePreference() async {
+    final store = widget.localeStore;
+    if (store == null) return;
+    final language = await store.load();
+    if (!mounted || language == null) return;
+    setState(() => _localeOverride = Locale(language));
+  }
+
+  Future<void> _onLocaleSelected(Locale? locale) async {
+    setState(() => _localeOverride = locale);
+    final store = widget.localeStore;
+    if (store == null) return;
+    try {
+      if (locale == null) {
+        await store.clear();
+      } else {
+        await store.save(locale.languageCode);
+      }
+    } catch (error) {
+      debugPrint('Failed to persist locale: $error');
+    }
+    if (widget.onLocaleChanged != null) await widget.onLocaleChanged!();
   }
 
   Future<void> _autoStart() async {
@@ -209,7 +245,7 @@ class _SubDockAppState extends State<SubDockApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SubDock',
-      locale: const Locale('zh'),
+      locale: _localeOverride,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(
@@ -284,6 +320,8 @@ class _SubDockAppState extends State<SubDockApp> {
         coordinator: widget.coordinator,
         themeMode: _themeMode,
         onThemeModeSelected: (mode) => unawaited(_onThemeModeSelected(mode)),
+        localeOverride: _localeOverride,
+        onLocaleSelected: (locale) => unawaited(_onLocaleSelected(locale)),
         onSave: _saveEnvironment,
         onSaveConfiguration: (configuration) =>
             _run(() => widget.coordinator.saveConfiguration(configuration)),
@@ -805,6 +843,8 @@ class _SettingsPage extends StatefulWidget {
     required this.coordinator,
     required this.themeMode,
     required this.onThemeModeSelected,
+    required this.localeOverride,
+    required this.onLocaleSelected,
     required this.onSave,
     required this.onSaveConfiguration,
     required this.onResetConfiguration,
@@ -817,6 +857,8 @@ class _SettingsPage extends StatefulWidget {
   final AppCoordinator coordinator;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeSelected;
+  final Locale? localeOverride;
+  final ValueChanged<Locale?> onLocaleSelected;
   final Future<void> Function(BackendEnvDocument document) onSave;
   final Future<void> Function(SubDockConfig configuration) onSaveConfiguration;
   final Future<void> Function() onResetConfiguration;
@@ -1102,13 +1144,12 @@ class _SettingsPageState extends State<_SettingsPage> {
     final configurationIssue = _configurationIssue;
     final l10n = AppLocalizations.of(context)!;
     final colors = Theme.of(context).extension<AppColors>()!;
+    final typography = Theme.of(context).extension<AppTypography>()!;
+    final heading = typography.titleLarge;
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(typography.spacingLg),
       children: [
-        Text(
-          l10n.appearanceHeading,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        Text(l10n.appearanceHeading, style: heading),
         SegmentedButton<ThemeMode>(
           segments: [
             ButtonSegment(
@@ -1131,15 +1172,33 @@ class _SettingsPageState extends State<_SettingsPage> {
           onSelectionChanged: (selection) =>
               widget.onThemeModeSelected(selection.first),
         ),
-        const SizedBox(height: 12),
-        Text(l10n.subdockConfigHeading,
-            style: Theme.of(context).textTheme.headlineSmall),
+        SizedBox(height: typography.spacingMd),
+        DropdownButton<Locale?>(
+          value: widget.localeOverride,
+          items: [
+            DropdownMenuItem<Locale?>(
+              value: null,
+              child: Text(l10n.languageFollowSystem),
+            ),
+            const DropdownMenuItem<Locale?>(
+              value: Locale('zh'),
+              child: Text('中文'),
+            ),
+            const DropdownMenuItem<Locale?>(
+              value: Locale('en'),
+              child: Text('English'),
+            ),
+          ],
+          onChanged: widget.onLocaleSelected,
+        ),
+        const Divider(height: 40),
+        Text(l10n.subdockConfigHeading, style: heading),
         if (widget.configurationError != null) ...[
           Text(
             l10n.configurationInvalid(widget.configurationError!),
             style: TextStyle(color: colors.error),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: typography.spacingS),
           OutlinedButton(
             onPressed: _configurationDirty
                 ? null
@@ -1168,8 +1227,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           child: Text(l10n.saveSubdockConfig),
         ),
         const Divider(height: 40),
-        Text(l10n.backendConfigHeading,
-            style: Theme.of(context).textTheme.headlineSmall),
+        Text(l10n.backendConfigHeading, style: heading),
         TextField(
           controller: _host,
           decoration: const InputDecoration(labelText: 'API Host'),
@@ -1203,7 +1261,8 @@ class _SettingsPageState extends State<_SettingsPage> {
         ExpansionTile(
           title: Text(l10n.advancedRawEnv),
           subtitle: Text(l10n.advancedRawEnvSubtitle),
-          childrenPadding: const EdgeInsets.only(bottom: 12),
+          initiallyExpanded: false,
+          childrenPadding: EdgeInsets.only(bottom: typography.spacingSm),
           children: [
             TextField(
               controller: _raw,
@@ -1213,21 +1272,23 @@ class _SettingsPageState extends State<_SettingsPage> {
               onChanged: _updateRaw,
             ),
             if (issues.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: typography.spacingS),
               for (final issue in issues)
                 Text(
                   '${issue.line == null ? '' : l10n.lineNumber(issue.line!)}${issue.message}',
                   style: TextStyle(color: colors.error),
                 ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: typography.spacingMd),
             FilledButton(
               onPressed: issues.isEmpty && _dirty ? _save : null,
               child: Text(l10n.save),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: typography.spacingLg),
+        Text(l10n.componentUpdatesHeading, style: heading),
+        SizedBox(height: typography.spacingSm),
         for (final kind in ComponentKind.values)
           _ComponentCard(
             kind: kind,

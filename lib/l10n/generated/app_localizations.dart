@@ -522,6 +522,18 @@ abstract class AppLocalizations {
   /// **'外观'**
   String get appearanceHeading;
 
+  /// No description provided for @languageFollowSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get languageFollowSystem;
+
+  /// No description provided for @componentUpdatesHeading.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件更新'**
+  String get componentUpdatesHeading;
+
   /// No description provided for @checkForUpdates.
   ///
   /// In zh, this message translates to:

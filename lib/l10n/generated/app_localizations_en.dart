@@ -255,6 +255,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearanceHeading => 'Appearance';
 
   @override
+  String get languageFollowSystem => 'Follow system';
+
+  @override
+  String get componentUpdatesHeading => 'Component Updates';
+
+  @override
   String get checkForUpdates => 'Check for updates';
 
   @override

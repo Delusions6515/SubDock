@@ -247,6 +247,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearanceHeading => '外观';
 
   @override
+  String get languageFollowSystem => '跟随系统';
+
+  @override
+  String get componentUpdatesHeading => '组件更新';
+
+  @override
   String get checkForUpdates => '检查更新';
 
   @override
