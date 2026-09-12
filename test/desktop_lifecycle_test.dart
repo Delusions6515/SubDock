@@ -25,6 +25,21 @@ void main() {
     expect(traySupportsToolTip(isLinux: false), isTrue);
   });
 
+  test('only supported desktops pop up tray context menus', () {
+    expect(
+      traySupportsPopupContextMenu(isWindows: true, isMacOS: false),
+      isTrue,
+    );
+    expect(
+      traySupportsPopupContextMenu(isWindows: false, isMacOS: true),
+      isTrue,
+    );
+    expect(
+      traySupportsPopupContextMenu(isWindows: false, isMacOS: false),
+      isFalse,
+    );
+  });
+
   test('intercepts native close events before initializing the tray', () async {
     final windowCalls = <MethodCall>[];
     final messenger =
@@ -76,4 +91,46 @@ void main() {
       expect(windowCalls.last.arguments, {'isFullScreen': true});
     },
   );
+
+  test('restores a minimized window when opening it from the tray', () async {
+    final windowCalls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const windowChannel = MethodChannel('window_manager');
+    messenger.setMockMethodCallHandler(windowChannel, (call) async {
+      windowCalls.add(call);
+      if (call.method == 'isMinimized') return true;
+      return true;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(windowChannel, null));
+
+    final lifecycle = DesktopLifecycle(onExit: () async {});
+    lifecycle.onTrayIconMouseDown();
+    await Future<void>.delayed(Duration.zero);
+
+    final methods = windowCalls.map((call) => call.method).toList();
+    expect(methods.first, 'isMinimized');
+    expect(methods, contains('restore'));
+    expect(methods, containsAllInOrder(['show', 'focus']));
+  });
+
+  test('shows a hidden non-minimized window from the tray', () async {
+    final methods = <String>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel('window_manager');
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      methods.add(call.method);
+      if (call.method == 'isMinimized') return false;
+      return true;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    DesktopLifecycle(onExit: () async {}).onTrayIconMouseDown();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(methods.first, 'isMinimized');
+    expect(methods, containsAllInOrder(['show', 'focus']));
+    expect(methods, isNot(contains('restore')));
+  });
 }

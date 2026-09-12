@@ -21,7 +21,7 @@ class DesktopLifecycle with WindowListener, TrayListener {
     this.trayLabels,
     Directory? bundleDirectory,
   }) : _bundleDirectory =
-          bundleDirectory ?? File(Platform.resolvedExecutable).parent;
+           bundleDirectory ?? File(Platform.resolvedExecutable).parent;
 
   final Future<void> Function() onExit;
   final TrayLabelResolver? trayLabels;
@@ -118,6 +118,16 @@ class DesktopLifecycle with WindowListener, TrayListener {
   void onTrayIconMouseDown() => unawaited(_showWindow());
 
   @override
+  void onTrayIconRightMouseDown() {
+    if (traySupportsPopupContextMenu(
+      isWindows: Platform.isWindows,
+      isMacOS: Platform.isMacOS,
+    )) {
+      unawaited(trayManager.popUpContextMenu());
+    }
+  }
+
+  @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'show':
@@ -128,6 +138,9 @@ class DesktopLifecycle with WindowListener, TrayListener {
   }
 
   Future<void> _showWindow() async {
+    if (await windowManager.isMinimized()) {
+      await windowManager.restore();
+    }
     await windowManager.show();
     await windowManager.focus();
   }
@@ -141,3 +154,8 @@ String trayIconPath({
 ).path;
 
 bool traySupportsToolTip({required bool isLinux}) => !isLinux;
+
+bool traySupportsPopupContextMenu({
+  required bool isWindows,
+  required bool isMacOS,
+}) => isWindows || isMacOS;

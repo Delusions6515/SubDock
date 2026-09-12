@@ -37,6 +37,7 @@ class SubDockApp extends StatefulWidget {
     this.onMinimize,
     this.onToggleFullscreen,
     this.onCloseToTray,
+    this.onStartDragging,
     this.themeModeStore,
     this.localeStore,
     this.onLocaleChanged,
@@ -51,6 +52,7 @@ class SubDockApp extends StatefulWidget {
   final Future<void> Function()? onMinimize;
   final Future<void> Function()? onToggleFullscreen;
   final Future<void> Function()? onCloseToTray;
+  final Future<void> Function()? onStartDragging;
   final ThemeModeStore? themeModeStore;
   final LocalePreferenceStore? localeStore;
 
@@ -351,7 +353,19 @@ class _SubDockAppState extends State<SubDockApp> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.appTitle),
+        title: widget.onStartDragging == null
+            ? Text(l10n.appTitle)
+            : GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (_) => unawaited(widget.onStartDragging!()),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(l10n.appTitle),
+                  ),
+                ),
+              ),
         actions: [
           if (widget.onMinimize != null)
             IconButton(
@@ -707,10 +721,7 @@ class _ManagePageState extends State<_ManagePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      _webViewError!,
-                      style: TextStyle(color: colors.error),
-                    ),
+                    Text(_webViewError!, style: TextStyle(color: colors.error)),
                     if (_missingWebView2)
                       TextButton(
                         onPressed: () => unawaited(_openWebView2Download()),
@@ -778,17 +789,19 @@ class _RuntimePage extends StatelessWidget {
           label: 'HTTP-META',
           value: switch (state.httpMetaStatus) {
             HttpMetaStatus.disabled => l10n.httpMetaDisabled,
-            HttpMetaStatus.unavailable => state.httpMetaMessage == null
-                ? l10n.httpMetaUnavailable
-                : l10n.httpMetaUnavailableDetail(state.httpMetaMessage!),
+            HttpMetaStatus.unavailable =>
+              state.httpMetaMessage == null
+                  ? l10n.httpMetaUnavailable
+                  : l10n.httpMetaUnavailableDetail(state.httpMetaMessage!),
             HttpMetaStatus.starting => l10n.httpMetaStarting,
             HttpMetaStatus.running => l10n.httpMetaRunning(
               state.httpMetaPort ?? '-',
               state.httpMetaVersion ?? '-',
             ),
-            HttpMetaStatus.degraded => state.httpMetaMessage == null
-                ? l10n.httpMetaDegraded
-                : l10n.httpMetaDegradedDetail(state.httpMetaMessage!),
+            HttpMetaStatus.degraded =>
+              state.httpMetaMessage == null
+                  ? l10n.httpMetaDegraded
+                  : l10n.httpMetaDegradedDetail(state.httpMetaMessage!),
             HttpMetaStatus.stopped => l10n.httpMetaStopped,
           },
         ),
@@ -1122,7 +1135,9 @@ class _SettingsPageState extends State<_SettingsPage> {
             current: update.availableVersion,
             previous: update.currentVersion,
           );
-          _componentErrors[kind] = l10n.componentUpdatedTo(update.availableVersion);
+          _componentErrors[kind] = l10n.componentUpdatedTo(
+            update.availableVersion,
+          );
         });
       }
     } catch (error) {
@@ -1146,7 +1161,9 @@ class _SettingsPageState extends State<_SettingsPage> {
           final previous = _componentStatuses[kind]?.current;
           if (previous != null) {
             _componentStatuses[kind] = ComponentVersionStatus(
-              current: _componentStatuses[kind]?.previous ?? l10n.componentPackageVersion,
+              current:
+                  _componentStatuses[kind]?.previous ??
+                  l10n.componentPackageVersion,
               previous: previous,
             );
           }
@@ -1239,10 +1256,7 @@ class _SettingsPageState extends State<_SettingsPage> {
           ),
         ),
         if (configurationIssue != null)
-          Text(
-            configurationIssue,
-            style: TextStyle(color: colors.error),
-          ),
+          Text(configurationIssue, style: TextStyle(color: colors.error)),
         FilledButton(
           onPressed: configurationIssue == null && _configurationDirty
               ? _saveConfiguration
@@ -1460,11 +1474,15 @@ String _localizedConfigError(AppLocalizations l10n, AppConfigError error) {
     AppConfigErrorCode.unsupportedVersion => l10n.configErrorUnsupportedVersion,
     AppConfigErrorCode.emptyHost => l10n.configErrorNotEmpty(error.key!),
     AppConfigErrorCode.notAnObject => l10n.configErrorNotAnObject(error.name!),
-    AppConfigErrorCode.invalidFieldName =>
-      l10n.configErrorInvalidFieldName(error.name!),
-    AppConfigErrorCode.unknownField => l10n.configErrorUnknownField(error.field!),
-    AppConfigErrorCode.stringWithNewline =>
-      l10n.configErrorStringWithNewline(error.key!),
+    AppConfigErrorCode.invalidFieldName => l10n.configErrorInvalidFieldName(
+      error.name!,
+    ),
+    AppConfigErrorCode.unknownField => l10n.configErrorUnknownField(
+      error.field!,
+    ),
+    AppConfigErrorCode.stringWithNewline => l10n.configErrorStringWithNewline(
+      error.key!,
+    ),
     AppConfigErrorCode.mustBeBoolean => l10n.configErrorNotBoolean(error.key!),
     AppConfigErrorCode.portRange => l10n.configErrorPortRange(error.key!),
     AppConfigErrorCode.pathPrefix => l10n.configErrorPathPrefix(error.key!),
@@ -1496,7 +1514,7 @@ String _localizedError(AppLocalizations l10n, Object? error) {
 /// The language-autonym label for a supported locale code. These are not
 /// translated (Chinese stays "中文" even in the English UI).
 String _languageLabel(String language) => switch (language) {
-      'zh' => '中文',
-      'en' => 'English',
-      _ => language,
-    };
+  'zh' => '中文',
+  'en' => 'English',
+  _ => language,
+};

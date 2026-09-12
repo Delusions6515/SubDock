@@ -136,6 +136,7 @@ void main() {
       var minimizes = 0;
       var fullscreenToggles = 0;
       var closesToTray = 0;
+      var drags = 0;
 
       await tester.pumpWidget(
         SubDockApp(
@@ -146,16 +147,19 @@ void main() {
           onMinimize: () async => minimizes++,
           onToggleFullscreen: () async => fullscreenToggles++,
           onCloseToTray: () async => closesToTray++,
+          onStartDragging: () async => drags++,
         ),
       );
 
       await tester.tap(find.byTooltip('最小化'));
       await tester.tap(find.byTooltip('切换全屏'));
       await tester.tap(find.byTooltip('关闭到托盘'));
+      await tester.drag(find.text('SubDock'), const Offset(40, 0));
 
       expect(minimizes, 1);
       expect(fullscreenToggles, 1);
       expect(closesToTray, 1);
+      expect(drags, 1);
       await tester.pumpWidget(const SizedBox());
     },
   );

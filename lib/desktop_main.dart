@@ -111,6 +111,7 @@ Future<void> main() async {
       onMinimize: lifecycle.minimize,
       onToggleFullscreen: lifecycle.toggleFullscreen,
       onCloseToTray: lifecycle.closeToTray,
+      onStartDragging: windowManager.startDragging,
       themeModeStore: ThemeModeStore(directories),
       localeStore: localeStore,
       onLocaleChanged: (locale) async {
