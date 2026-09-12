@@ -16,7 +16,7 @@ class SubDockConfig {
   final SubDockHttpMetaConfig httpMeta;
 
   factory SubDockConfig.fromJson(Object? json) {
-    final root = _object(json, '根对象');
+    final root = _object(json, 'SubDock configuration');
     _rejectUnknownKeys(root, const {'schemaVersion', 'backend', 'httpMeta'});
     if (root['schemaVersion'] != schemaVersion) {
       throw const AppConfigError(AppConfigErrorCode.unsupportedVersion);

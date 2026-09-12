@@ -1042,7 +1042,8 @@ class _SettingsPageState extends State<_SettingsPage> {
     }
     try {
       await widget.onSave(_document);
-    } on StateError {
+    } on Object {
+      // _saveEnvironment records the error into _error for display.
       return;
     }
     if (!mounted) return;

@@ -4,6 +4,7 @@ import 'dart:io';
 import '../runtime/runtime_directories.dart';
 import '../runtime/runtime_permissions.dart';
 import 'backend_env.dart';
+import 'config_error.dart';
 
 class BackendEnvStore {
   const BackendEnvStore(this.directories);
@@ -18,6 +19,13 @@ class BackendEnvStore {
   }
 
   Future<void> save(BackendEnvDocument document) async {
+    final issues = BackendEnvPolicy.validate(document);
+    if (issues.isNotEmpty) {
+      throw AppConfigError(
+        AppConfigErrorCode.environmentInvalid,
+        issue: issues.first,
+      );
+    }
     final temporary = File(
       '${file.path}.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp',
     );

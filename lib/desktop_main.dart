@@ -78,8 +78,8 @@ Future<void> main() async {
   );
   try {
     await coordinator.loadEnvironment();
-  } on StateError {
-    // The settings page provides the recovery path for an invalid saved ENV.
+  } on AppConfigError {
+    // The settings page provides the recovery path via `configurationError`.
   }
   final localeStore = LocalePreferenceStore(directories);
   // The tray is built before the app loads its preference, so the resolver
